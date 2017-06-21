@@ -2,6 +2,7 @@ from __future__ import print_function
 import os, sys, time
 from PIL import Image, ImageFilter, ImageEnhance
 from subprocess import call, DEVNULL
+import tesserocr
 
 
 def resize(im, max_width, max_height):
@@ -89,14 +90,12 @@ def bfs_segmentation(im_edges, minimumArea):
 def ocr(rgb_im, box):
   region = rgb_im.crop(box)
   # region.show()
-  file_name = "cropped_file.png"
-  region.save(file_name)
-  call(["tesseract", file_name, "output", "-psm", "13"], stderr=DEVNULL)
-  resultFile = open("output.txt", 'r')
-  result = resultFile.read()  # type: str
-  resultFile.close()
-  os.remove("output.txt")
-  os.remove("cropped_file.png")
+  result = tesserocr.image_to_text(region, psm=13)
+  # with PyTessBaseAPI() as api:
+  #   api.SetImage(region)
+  #   print(api.GetUTF8Text())
+  #   print(api.AllWordConfidences())
+  #   result = api.GetUTF8Text()
   result = result.strip().upper()
   midX = (box[0] + box[2])/2
   midY = (box[1] + box[3])/2
