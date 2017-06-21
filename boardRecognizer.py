@@ -28,7 +28,7 @@ im_edges = im.filter(ImageFilter.FIND_EDGES)
 im_edges = im_edges.filter(ImageFilter.GaussianBlur)
 im_edges = im_edges.filter(ImageFilter.GaussianBlur)
 im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-im_edges.show()
+#im_edges.show()
 for x in range(width):
   for y in range(height):
     r, g, b = im_edges.getpixel((x, y))
@@ -37,7 +37,7 @@ for x in range(width):
       im_edges.putpixel((x, y), (255, 255, 255))
     else:
       im_edges.putpixel((x, y), (0, 0, 0))
-im_edges.show()
+#im_edges.show()
 
 # Do BFS from each white pixel to find regions of white pixels
 visited = []  # type: List[List[bool]]
@@ -47,7 +47,7 @@ for x in range(width):
     visited[x].append(False)
 
 foundWords = []  # type: List[str]
-foundWordsWithPositions = []
+wordPositions = []
 for x in range(width):
   for y in range(height):
     if visited[x][y]:
@@ -111,12 +111,64 @@ for x in range(width):
         midX = (minX+maxX)/2
         midY = (minY+maxY)/2
         foundWords.append(result)
-        foundWordsWithPositions.append((midY*10+midX, result))
+        wordPositions.append((midX, midY, result))
       else:
         print(result)
-foundWordsWithPositions = sorted(foundWordsWithPositions)
-foundWords = []
-for pair in foundWordsWithPositions:
-  foundWords.append(pair[1])
+
+def getGridScore(x0, y0, dx, dy, wordPositions):
+  wordIndex = []
+  for i in range(5):
+    wordIndex.append([])
+    for j in range(5):
+      wordIndex[i].append(-1)
+  score = 0
+  for ind in range(len(wordPositions)):
+    x = wordPositions[ind][0]
+    y = wordPositions[ind][1]
+    bestDis = 1e9
+    for i in range(5):
+      for j in range(5):
+        sx = x0 + dx * i
+        sy = y0 + dy * j
+        if wordIndex[i][j] != -1:
+          continue
+        Dx = x - sx
+        Dy = y - sy
+        dis = Dx*Dx + Dy*Dy
+        if dis < bestDis:
+          bestDis = dis
+          bestI = i
+          bestJ = j
+    score += bestDis
+    wordIndex[bestI][bestJ] = ind
+  return (score, wordIndex)
+
+
+bestScore = 1e30
+for x0ind in range(10):
+  x0 = x0ind * (width/25)
+  for y0ind in range(10):
+    y0 = y0ind * (height/25)
+    for dxind in range(10):
+      dx = dxind * (width/50)
+      for dyind in range(10):
+        dy = dyind * (height/50)
+        #print(str(x0) + ", " + str(y0) + ", " + str(dx) + ", " + str(dy))
+        (score, wordIndex) = getGridScore(x0, y0, dx, dy, wordPositions)
+        #print(score)
+        if score < bestScore:
+          bestScore = score
+          bestWordIndex = wordIndex
+print(bestScore)
+print(bestWordIndex)
+grid = []
+for i in range(5):
+  grid.append([])
+  for j in range(5):
+    if bestWordIndex[j][i] == -1:
+      grid[i].append("")
+    else:
+      grid[i].append(foundWords[bestWordIndex[j][i]])
+
 print("Found " + str(len(foundWords)) + " words!")
-print(foundWords)
+print(grid)
