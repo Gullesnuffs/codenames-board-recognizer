@@ -88,8 +88,6 @@ def bfs_segmentation(im_edges, minimumArea):
 
 def ocr(rgb_im, box):
   region = rgb_im.crop(box)
-  enhancer = ImageEnhance.Contrast(region)
-  region = enhancer.enhance(1.4)
   # region.show()
   file_name = "cropped_file.png"
   region.save(file_name)
@@ -221,6 +219,7 @@ def find_words(imagePath):
   boxes = list(bfs_segmentation(im_edges, minimumArea))
   boxes = filter_outer_boxes(boxes)
 
+  rgb_im = ImageEnhance.Contrast(rgb_im).enhance(1.4)
   foundWords = [ocr(rgb_im, box) for box in boxes]
   foundWords = [w for w in foundWords if w[0].strip() != ""]
   actualWords = [word for word in foundWords if word[0] in wordList]
