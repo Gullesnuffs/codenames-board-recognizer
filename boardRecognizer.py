@@ -1,50 +1,48 @@
 from __future__ import print_function
 import os, sys, time
 from PIL import Image, ImageFilter, ImageEnhance
-from subprocess import call
+from subprocess import call, DEVNULL
 
-def findWords(imagePath):
-  wordListFile = open('wordlist.txt', 'r')
-  wordList = []
-  for line in wordListFile:
-    wordList.append(line.strip())
 
-  im = Image.open(imagePath)
-  sz = im.size
-  width = sz[0]
-  height = sz[1]
-  coordinateFactor = 1
-  if width > 3000:
+def shrink_if_too_large(im, max_width, max_height):
+  width, height = im.size
+  if width > max_width or height > max_height:
     im = im.resize((width//2, height//2))
-    width //= 2
-    height //= 2
-    coordinateFactor = 1
-  rgb_im = im.convert("RGB")
-  totalArea = width * height
+  return im
+
+
+def find_edges(im):
   im_edges = im.filter(ImageFilter.FIND_EDGES)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  #im_edges.show()
+  image2binary(im_edges, 30)
+  # im_edges.show()
+  return im_edges
+
+
+def image2binary(im, threshold):
+  width, height = im.size
   for x in range(width):
     for y in range(height):
-      r, g, b = im_edges.getpixel((x, y))
+      r, g, b = im.getpixel((x, y))
       brightness = r+g+b
-      if brightness > 30:
-        im_edges.putpixel((x, y), (255, 255, 255))
+      if brightness > threshold:
+        im.putpixel((x, y), (255, 255, 255))
       else:
-        im_edges.putpixel((x, y), (0, 0, 0))
-  #im_edges.show()
+        im.putpixel((x, y), (0, 0, 0))
 
+
+def bfs_segmentation(im_edges, minimumArea):
+  # im_edges.show()
   # Do BFS from each white pixel to find regions of white pixels
   visited = []  # type: List[List[bool]]
+  width, height = im_edges.size
   for x in range(width):
     visited.append([])
     for y in range(height):
       visited[x].append(False)
 
-  foundWords = []  # type: List[str]
-  wordPositions = []
   for x in range(width):
     for y in range(height):
       if visited[x][y]:
@@ -81,8 +79,6 @@ def findWords(imagePath):
       regionWidth = maxX - minX
       regionHeight = maxY - minY
       area = (regionWidth+1)*(regionHeight+1)
-      minimumPartOfImage = 0.0005
-      minimumArea = totalArea * minimumPartOfImage
       if area < minimumArea:
         continue
       print(str(minX) + ', ' + str(minY) + ' ' + str(maxX) + ', ' + str(maxY))
@@ -90,29 +86,29 @@ def findWords(imagePath):
       minY = max(minY-10, 0)
       maxX = min(maxX+10, width)
       maxY = min(maxY+10, height)
-      box = (minX * coordinateFactor, minY * coordinateFactor, maxX * coordinateFactor, maxY * coordinateFactor)
-      region = rgb_im.crop(box)
-      enhancer = ImageEnhance.Contrast(region)
-      region = enhancer.enhance(1.4)
-      #region.show()
-      region.save("cropped_file.png")
-      call(["tesseract", "cropped_file.png", "output"])
-      resultFile = open("output.txt", 'r')
-      result = resultFile.read()  # type: str
-      resultFile.close()
-      os.remove("output.txt")
-      os.remove("cropped_file.png")
-      result = result.strip().upper()
-      if result not in foundWords:
-        if result in wordList:
-          midX = (minX+maxX)/2
-          midY = (minY+maxY)/2
-          foundWords.append(result)
-          wordPositions.append((midX, midY, result))
-        else:
-          print(result)
+      yield (minX, minY, maxX, maxY)
 
-  def getGridScore(x0, y0, dx, dy, wordPositions):
+
+def ocr(rgb_im, box):
+  region = rgb_im.crop(box)
+  enhancer = ImageEnhance.Contrast(region)
+  region = enhancer.enhance(1.4)
+  # region.show()
+  region.save("cropped_file.png")
+  call(["tesseract", "cropped_file.png", "output"], stderr=DEVNULL)
+  resultFile = open("output.txt", 'r')
+  result = resultFile.read()  # type: str
+  resultFile.close()
+  os.remove("output.txt")
+  os.remove("cropped_file.png")
+  result = result.strip().upper()
+  midX = (box[0] + box[2])/2
+  midY = (box[1] + box[3])/2
+  return (result, midX, midY)
+
+
+def fit_grid_to_words(words, wordPositions, width, height):
+  def get_grid_score(x0, y0, dx, dy):
     wordIndex = []
     for i in range(5):
       wordIndex.append([])
@@ -120,8 +116,7 @@ def findWords(imagePath):
         wordIndex[i].append(-1)
     score = 0
     for ind in range(len(wordPositions)):
-      x = wordPositions[ind][0]
-      y = wordPositions[ind][1]
+      x, y = wordPositions[ind]
       bestDis = 1e9
       for i in range(5):
         for j in range(5):
@@ -149,14 +144,11 @@ def findWords(imagePath):
         dx = dxind * (width/50)
         for dyind in range(10):
           dy = dyind * (height/50)
-          #print(str(x0) + ", " + str(y0) + ", " + str(dx) + ", " + str(dy))
-          (score, wordIndex) = getGridScore(x0, y0, dx, dy, wordPositions)
-          #print(score)
+          (score, wordIndex) = get_grid_score(x0, y0, dx, dy)
           if score < bestScore:
             bestScore = score
             bestWordIndex = wordIndex
-  print(bestScore)
-  print(bestWordIndex)
+
   grid = []
   for i in range(5):
     grid.append([])
@@ -164,15 +156,49 @@ def findWords(imagePath):
       if bestWordIndex[j][i] == -1:
         grid[i].append("")
       else:
-        grid[i].append(foundWords[bestWordIndex[j][i]])
+        grid[i].append(words[bestWordIndex[j][i]])
 
-  return foundWords, grid
+  return grid
+
+
+def find_words(imagePath):
+  wordList = [line.strip() for line in open('wordlist.txt')]
+
+  im = Image.open(imagePath)
+  im = shrink_if_too_large(im, 3000, 3000)
+  width, height = im.size
+
+  rgb_im = im.convert("RGB")
+  totalArea = width * height
+
+  im_edges = find_edges(im)
+
+  minimumPartOfImage = 0.0005
+  minimumArea = totalArea * minimumPartOfImage
+  boxes = list(bfs_segmentation(im_edges, minimumArea))
+
+  foundWords = [ocr(rgb_im, box) for box in boxes]
+  foundWords = [w for w in foundWords if w[0].strip() != ""]
+  actualWords = [word for word in foundWords if word[0] in wordList]
+
+  uniqueWords = []
+  for word in actualWords:
+    if all(w[0] != word[0] for w in uniqueWords):
+      uniqueWords.append(word)
+
+  print("Unrecognized words:\n" + '\n'.join(["  " + w[0].replace('\n', '\\n') for w in foundWords if w not in actualWords]))
+
+  wordPositions = [(word[1], word[2]) for word in uniqueWords]
+  words = [word[0] for word in uniqueWords]
+  grid = fit_grid_to_words(words, wordPositions, width, height)
+
+  return words, grid
 
 
 if __name__ == "__main__":
   if len(sys.argv) != 2:
     print("usage: python3 boardRecognizer.py image")
     exit(0)
-  foundWords, grid = findWords(sys.argv[1])
+  foundWords, grid = find_words(sys.argv[1])
   print("Found " + str(len(foundWords)) + " words!")
-  print(grid)
+  print('\n'.join(["".join([w.ljust(20) for w in line]) for line in grid]))
