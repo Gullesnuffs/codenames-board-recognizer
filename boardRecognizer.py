@@ -36,14 +36,12 @@ def image2binary(im, threshold):
 
 def bfs_segmentation(im_edges, minimumArea):
   # im_edges.show()
-  # Do BFS from each white pixel to find regions of white pixels
-  visited = []  # type: List[List[bool]]
+  # Do DFS from each white pixel to find regions of white pixels
   width, height = im_edges.size
-  for x in range(width):
-    visited.append([])
-    for y in range(height):
-      visited[x].append(False)
+  visited = [[False] * height for _ in range(width)]
 
+  DX = [1, 0, -1, 0]
+  DY = [0, 1, 0, -1]
   for x in range(width):
     for y in range(height):
       if visited[x][y]:
@@ -55,16 +53,12 @@ def bfs_segmentation(im_edges, minimumArea):
       maxX = x
       minY = y
       maxY = y
-      dx = [1, 0, -1, 0]
-      dy = [0, 1, 0, -1]
       visited[x][y] = True
       while len(q) > 0:
-        cx = q[-1][0]
-        cy = q[-1][1]
-        q.pop()
+        cx, cy = q.pop()
         for i in range(4):
-          nx = cx + dx[i]
-          ny = cy + dy[i]
+          nx = cx + DX[i]
+          ny = cy + DY[i]
           if nx < 0 or ny < 0 or nx >= width or ny >= height:
             continue
           if im_edges.getpixel((nx, ny))[0] == 0:
