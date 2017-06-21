@@ -5,14 +5,14 @@ from subprocess import call, DEVNULL
 
 
 def shrink_if_too_large(im, max_width, max_height):
-  width, height = im.size
-  if width > max_width or height > max_height:
-    im = im.resize((width//2, height//2))
+  im = im.resize((max_width, max_height), Image.LANCZOS)
   return im
 
 
 def find_edges(im):
   im_edges = im.filter(ImageFilter.FIND_EDGES)
+  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
+  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
@@ -193,7 +193,7 @@ def find_words(imagePath):
   wordList = [line.strip() for line in open('wordlist.txt')]
 
   im = Image.open(imagePath)
-  im = shrink_if_too_large(im, 3000, 3000)
+  im = shrink_if_too_large(im, 2500, 1500)
   width, height = im.size
 
   rgb_im = im.convert("RGB")
