@@ -81,7 +81,6 @@ def bfs_segmentation(im_edges, minimumArea):
       area = (regionWidth+1)*(regionHeight+1)
       if area < minimumArea:
         continue
-      print(str(minX) + ', ' + str(minY) + ' ' + str(maxX) + ', ' + str(maxY))
       box = (minX, minY, maxX, maxY)
       box = clamp_aabb(expand_aabb(box, 3), width, height)
       yield box
