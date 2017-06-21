@@ -82,10 +82,10 @@ def bfs_segmentation(im_edges, minimumArea):
       if area < minimumArea:
         continue
       print(str(minX) + ', ' + str(minY) + ' ' + str(maxX) + ', ' + str(maxY))
-      minX = max(minX-10, 0)
-      minY = max(minY-10, 0)
-      maxX = min(maxX+10, width)
-      maxY = min(maxY+10, height)
+      minX = max(minX-3, 0)
+      minY = max(minY-3, 0)
+      maxX = min(maxX+3, width)
+      maxY = min(maxY+3, height)
       yield (minX, minY, maxX, maxY)
 
 
@@ -96,7 +96,7 @@ def ocr(rgb_im, box):
   # region.show()
   file_name = "cropped_file.png"
   region.save(file_name)
-  call(["tesseract", file_name, "output"], stderr=DEVNULL)
+  call(["tesseract", file_name, "output", "-psm", "12"], stderr=DEVNULL)
   resultFile = open("output.txt", 'r')
   result = resultFile.read()  # type: str
   resultFile.close()
