@@ -87,15 +87,11 @@ def bfs_segmentation(im_edges, minimumArea):
       yield box
 
 
-def ocr(rgb_im, box):
+def ocr(rgb_im, tess, box):
   region = rgb_im.crop(box)
   # region.show()
-  result = tesserocr.image_to_text(region, psm=13)
-  # with PyTessBaseAPI() as api:
-  #   api.SetImage(region)
-  #   print(api.GetUTF8Text())
-  #   print(api.AllWordConfidences())
-  #   result = api.GetUTF8Text()
+  tess.SetImage(region)
+  result = tess.GetUTF8Text()
   result = result.strip().upper()
   midX = (box[0] + box[2])/2
   midY = (box[1] + box[3])/2
@@ -219,7 +215,8 @@ def find_words(imagePath):
   boxes = filter_outer_boxes(boxes)
 
   rgb_im = ImageEnhance.Contrast(rgb_im).enhance(1.4)
-  foundWords = [ocr(rgb_im, box) for box in boxes]
+  with tesserocr.PyTessBaseAPI() as tess:
+    foundWords = [ocr(rgb_im, tess, box) for box in boxes]
   foundWords = [w for w in foundWords if w[0].strip() != ""]
   actualWords = [word for word in foundWords if word[0] in wordList]
 
