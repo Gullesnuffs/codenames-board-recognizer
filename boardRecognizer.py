@@ -94,8 +94,9 @@ def ocr(rgb_im, box):
   enhancer = ImageEnhance.Contrast(region)
   region = enhancer.enhance(1.4)
   # region.show()
-  region.save("cropped_file.png")
-  call(["tesseract", "cropped_file.png", "output"], stderr=DEVNULL)
+  file_name = "cropped_file.png"
+  region.save(file_name)
+  call(["tesseract", file_name, "output"], stderr=DEVNULL)
   resultFile = open("output.txt", 'r')
   result = resultFile.read()  # type: str
   resultFile.close()
@@ -105,6 +106,33 @@ def ocr(rgb_im, box):
   midX = (box[0] + box[2])/2
   midY = (box[1] + box[3])/2
   return (result, midX, midY)
+
+
+def bounding_box_area(box):
+  return (box[2] - box[0]) * (box[3] - box[1])
+
+
+def shrink_bounding_box(box, fraction):
+  xmin, ymin, xmax, ymax = box
+  dx = (xmax - xmin) * fraction * 0.5
+  dy = (ymax - ymin) * fraction * 0.5
+  return (xmin + dx, ymin + dy, xmax - dx, ymax - dy)
+
+
+def bounding_boxes_overlap(box1, box2):
+  xmin1, ymin1, xmax1, ymax1 = box1
+  xmin2, ymin2, xmax2, ymax2 = box2
+  return not (xmin1 > xmax2 or ymin1 > ymax2 or xmax1 < xmin2 or ymax1 < ymin2)
+
+
+def filter_outer_boxes(boxes):
+  """ Removes bounding boxes that significantly overlap other smaller bounding boxes """
+  boxes.sort(key=lambda box: bounding_box_area(box))
+  result = []
+  for box in boxes:
+    if all(not(bounding_boxes_overlap(shrink_bounding_box(box, 0.2), shrink_bounding_box(b, 0.2))) for b in result):
+      result.append(box)
+  return result
 
 
 def fit_grid_to_words(words, wordPositions, width, height):
@@ -176,6 +204,7 @@ def find_words(imagePath):
   minimumPartOfImage = 0.0005
   minimumArea = totalArea * minimumPartOfImage
   boxes = list(bfs_segmentation(im_edges, minimumArea))
+  boxes = filter_outer_boxes(boxes)
 
   foundWords = [ocr(rgb_im, box) for box in boxes]
   foundWords = [w for w in foundWords if w[0].strip() != ""]
