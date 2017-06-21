@@ -17,21 +17,8 @@ def find_edges(im):
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
   im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  image2binary(im_edges, 30)
-  # im_edges.show()
-  return im_edges
-
-
-def image2binary(im, threshold):
-  width, height = im.size
-  for x in range(width):
-    for y in range(height):
-      r, g, b = im.getpixel((x, y))
-      brightness = r+g+b
-      if brightness > threshold:
-        im.putpixel((x, y), (255, 255, 255))
-      else:
-        im.putpixel((x, y), (0, 0, 0))
+  im_edges = im_edges.convert('L')
+  return im_edges.point(lambda x: 0 if x <= 10 else 255, '1')
 
 
 def bfs_segmentation(im_edges, minimumArea):
@@ -46,7 +33,7 @@ def bfs_segmentation(im_edges, minimumArea):
     for y in range(height):
       if visited[x][y]:
         continue
-      if im_edges.getpixel((x, y))[0] == 0:
+      if im_edges.getpixel((x, y)) == 0:
         continue
       q = [(x, y)]
       minX = x
@@ -61,7 +48,7 @@ def bfs_segmentation(im_edges, minimumArea):
           ny = cy + DY[i]
           if nx < 0 or ny < 0 or nx >= width or ny >= height:
             continue
-          if im_edges.getpixel((nx, ny))[0] == 0:
+          if im_edges.getpixel((nx, ny)) == 0:
             continue
           if visited[nx][ny]:
             continue
