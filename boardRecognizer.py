@@ -94,7 +94,7 @@ def ocr(rgb_im, box):
   # region.show()
   file_name = "cropped_file.png"
   region.save(file_name)
-  call(["tesseract", file_name, "output", "-psm", "12"], stderr=DEVNULL)
+  call(["tesseract", file_name, "output", "-psm", "13"], stderr=DEVNULL)
   resultFile = open("output.txt", 'r')
   result = resultFile.read()  # type: str
   resultFile.close()
