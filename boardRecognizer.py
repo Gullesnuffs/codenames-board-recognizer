@@ -40,13 +40,13 @@ for x in range(width):
 im_edges.show()
 
 # Do BFS from each white pixel to find regions of white pixels
-visited = []
+visited = []  # type: List[List[bool]]
 for x in range(width):
   visited.append([])
   for y in range(height):
     visited[x].append(False)
 
-foundWords = []
+foundWords = []  # type: List[str]
 foundWordsWithPositions = []
 for x in range(width):
   for y in range(height):
@@ -81,9 +81,9 @@ for x in range(width):
         minY = min(minY, ny)
         maxY = max(maxY, ny)
         q.append((nx, ny))
-    dx = maxX - minX
-    dy = maxY - minY
-    area = (dx+1)*(dy+1)
+    regionWidth = maxX - minX
+    regionHeight = maxY - minY
+    area = (regionWidth+1)*(regionHeight+1)
     minimumPartOfImage = 0.0005
     minimumArea = totalArea * minimumPartOfImage
     if area < minimumArea:
@@ -101,12 +101,12 @@ for x in range(width):
     region.save("cropped_file.png")
     call(["tesseract", "cropped_file.png", "output"])
     resultFile = open("output.txt", 'r')
-    result = resultFile.read()
+    result = resultFile.read()  # type: str
     resultFile.close()
     os.remove("output.txt")
     os.remove("cropped_file.png")
     result = result.strip().upper()
-    if not result in foundWords:
+    if result not in foundWords:
       if result in wordList:
         midX = (minX+maxX)/2
         midY = (minY+maxY)/2
