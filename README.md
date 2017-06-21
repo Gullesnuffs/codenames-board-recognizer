@@ -11,7 +11,7 @@ pip3 install pillow tesserocr
 
 On Linux (apt):
 ~~~
-sudo apt install tesseract-ocr tesseract-ocr-eng
+sudo apt install tesseract-ocr tesseract-ocr-eng libleptonica-dev
 pip3 install pillow tesserocr
 ~~~
 
