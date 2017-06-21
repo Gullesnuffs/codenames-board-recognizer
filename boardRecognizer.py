@@ -82,11 +82,9 @@ def bfs_segmentation(im_edges, minimumArea):
       if area < minimumArea:
         continue
       print(str(minX) + ', ' + str(minY) + ' ' + str(maxX) + ', ' + str(maxY))
-      minX = max(minX-3, 0)
-      minY = max(minY-3, 0)
-      maxX = min(maxX+3, width)
-      maxY = min(maxY+3, height)
-      yield (minX, minY, maxX, maxY)
+      box = (minX, minY, maxX, maxY)
+      box = clamp_aabb(expand_aabb(box, 3), width, height)
+      yield box
 
 
 def ocr(rgb_im, box):
@@ -112,14 +110,32 @@ def bounding_box_area(box):
   return (box[2] - box[0]) * (box[3] - box[1])
 
 
-def shrink_bounding_box(box, fraction):
+def scale_aabb(box, scale):
+  """ Scales the size of the bounding box around its center """
   xmin, ymin, xmax, ymax = box
-  dx = (xmax - xmin) * fraction * 0.5
-  dy = (ymax - ymin) * fraction * 0.5
-  return (xmin + dx, ymin + dy, xmax - dx, ymax - dy)
+  dx = (xmax - xmin) * (scale - 1) * 0.5
+  dy = (ymax - ymin) * (scale - 1) * 0.5
+  return (xmin - dx, ymin - dy, xmax + dx, ymax + dy)
 
 
-def bounding_boxes_overlap(box1, box2):
+def expand_aabb(box, expansion):
+  """ Expands the bounding box by 'expansion' units in all directions """
+  xmin, ymin, xmax, ymax = box
+  dx = expansion
+  dy = expansion
+  return (xmin - dx, ymin - dy, xmax + dx, ymax + dy)
+
+
+def clamp_aabb(box, width, height):
+  return (
+      max(min(box[0], width), 0),
+      max(min(box[1], height), 0),
+      max(min(box[2], width), 0),
+      max(min(box[3], height), 0)
+  )
+
+
+def aabb_overlap(box1, box2):
   xmin1, ymin1, xmax1, ymax1 = box1
   xmin2, ymin2, xmax2, ymax2 = box2
   return not (xmin1 > xmax2 or ymin1 > ymax2 or xmax1 < xmin2 or ymax1 < ymin2)
@@ -130,7 +146,7 @@ def filter_outer_boxes(boxes):
   boxes.sort(key=lambda box: bounding_box_area(box))
   result = []
   for box in boxes:
-    if all(not(bounding_boxes_overlap(shrink_bounding_box(box, 0.2), shrink_bounding_box(b, 0.2))) for b in result):
+    if all(not(aabb_overlap(scale_aabb(box, 0.8), scale_aabb(b, 0.8))) for b in result):
       result.append(box)
   return result
 
