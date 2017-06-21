@@ -4,7 +4,7 @@ from PIL import Image, ImageFilter, ImageEnhance
 from subprocess import call, DEVNULL
 
 
-def shrink_if_too_large(im, max_width, max_height):
+def resize(im, max_width, max_height):
   im = im.resize((max_width, max_height), Image.LANCZOS)
   return im
 
@@ -193,7 +193,7 @@ def find_words(imagePath):
   wordList = [line.strip() for line in open('wordlist.txt')]
 
   im = Image.open(imagePath)
-  im = shrink_if_too_large(im, 2500, 1500)
+  im = resize(im, 2500, 1500)
   width, height = im.size
 
   rgb_im = im.convert("RGB")
