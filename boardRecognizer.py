@@ -29,11 +29,12 @@ def bfs_segmentation(im_edges, minimumArea):
 
   DX = [1, 0, -1, 0]
   DY = [0, 1, 0, -1]
+  data = im_edges.getdata(0)
   for x in range(width):
     for y in range(height):
       if visited[x][y]:
         continue
-      if im_edges.getpixel((x, y)) == 0:
+      if data[y * width + x] == 0:
         continue
       q = [(x, y)]
       minX = x
@@ -48,7 +49,7 @@ def bfs_segmentation(im_edges, minimumArea):
           ny = cy + DY[i]
           if nx < 0 or ny < 0 or nx >= width or ny >= height:
             continue
-          if im_edges.getpixel((nx, ny)) == 0:
+          if data[ny * width + nx] == 0:
             continue
           if visited[nx][ny]:
             continue
