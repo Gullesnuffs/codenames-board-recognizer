@@ -132,41 +132,62 @@ def fit_grid_to_words(words, wordPositions, width, height):
       wordIndex.append([])
       for j in range(5):
         wordIndex[i].append(-1)
-    score = 0
+    distances = []
+    used = []
     for ind in range(len(wordPositions)):
+      used.append(False)
       x, y = wordPositions[ind]
-      bestDis = 1e9
       for i in range(5):
         for j in range(5):
           sx = x0 + dx * i
           sy = y0 + dy * j
-          if wordIndex[i][j] != -1:
-            continue
           Dx = x - sx
           Dy = y - sy
           dis = Dx*Dx + Dy*Dy
-          if dis < bestDis:
-            bestDis = dis
-            bestI = i
-            bestJ = j
-      score += bestDis
-      wordIndex[bestI][bestJ] = ind
+          distances.append((dis, ind, i, j))
+    distances = sorted(distances)
+    score = 0
+    for (dis, ind, i, j) in distances:
+      if used[ind]:
+        continue
+      if wordIndex[i][j] != -1:
+        continue
+      score += dis
+      wordIndex[i][j] = ind
+      used[ind] = True
     return (score, wordIndex)
 
-  bestScore = 1e30
-  for x0ind in range(10):
-    x0 = x0ind * (width/25)
-    for y0ind in range(10):
-      y0 = y0ind * (height/25)
-      for dxind in range(10):
-        dx = dxind * (width/50)
-        for dyind in range(10):
-          dy = dyind * (height/50)
-          (score, wordIndex) = get_grid_score(x0, y0, dx, dy)
-          if score < bestScore:
-            bestScore = score
-            bestWordIndex = wordIndex
+  def hillClimb():
+    jump = width / 2
+    x0 = width / 10
+    y0 = height / 10
+    dx = width / 5
+    dy = height / 5
+    bestScore = 1e30
+    while jump > width/200:
+      jump /= 2
+      for iterations in range(2):
+        for newx0 in [x0 - jump, x0, x0 + jump]:
+          for newdx in [dx - jump, dx, dx + jump]:
+            (score, wordIndex) = get_grid_score(newx0, y0, newdx, dy)
+            if score < bestScore:
+              print(score)
+              bestScore = score
+              bestWordIndex = wordIndex
+              x0 = newx0
+              dx = newdx
+        for newy0 in [y0 - jump, y0, y0 + jump]:
+          for newdy in [dy - jump, dy, dy + jump]:
+            (score, wordIndex) = get_grid_score(x0, newy0, dx, newdy)
+            if score < bestScore:
+              print(score)
+              bestScore = score
+              bestWordIndex = wordIndex
+              y0 = newy0
+              dy = newdy
+    return bestWordIndex
 
+  bestWordIndex = hillClimb()
   grid = []
   for i in range(5):
     grid.append([])
