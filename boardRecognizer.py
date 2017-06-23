@@ -171,7 +171,6 @@ def fit_grid_to_words(words, wordPositions, width, height):
           for newdx in [dx - jump, dx, dx + jump]:
             (score, wordIndex) = get_grid_score(newx0, y0, newdx, dy)
             if score < bestScore:
-              print(score)
               bestScore = score
               bestWordIndex = wordIndex
               x0 = newx0
@@ -180,7 +179,6 @@ def fit_grid_to_words(words, wordPositions, width, height):
           for newdy in [dy - jump, dy, dy + jump]:
             (score, wordIndex) = get_grid_score(x0, newy0, dx, newdy)
             if score < bestScore:
-              print(score)
               bestScore = score
               bestWordIndex = wordIndex
               y0 = newy0
