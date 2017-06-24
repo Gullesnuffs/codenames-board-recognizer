@@ -75,12 +75,14 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
 
     contours = [c for c in contours if valid_contour(c)]
 
-    blacklist = [False] * len(contours)
+    blacklist = []
     for h in hierarchy:
         if h.item(3) >= 0:
-            blacklist[h.item(3)] = True
+            print(h.item(3))
+            blacklist.append(h.item(3))
 
-    contours = [c for i, c in enumerate(contours) if not blacklist[i]]
+    contours = [c for i, c in enumerate(contours) if i not in blacklist]
+    contours.sort(key=lambda c: c[0].item(1))
     return contours
 
 
