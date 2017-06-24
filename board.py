@@ -4,6 +4,7 @@ import numpy as np
 import scipy.optimize
 from PIL import Image
 import tesserocr
+import scipy.optimize
 
 
 def show(im):
@@ -25,20 +26,62 @@ class Card:
         return self.word
 
 
-def fit_grid_to_words(cards):
+def calculate_naive_bounding_rect(cards):
+    topleft = min(cards, key=lambda c: c.pos[0] + c.pos[1])
+    topright = min(cards, key=lambda c: -c.pos[0] + c.pos[1])
+    botleft = min(cards, key=lambda c: c.pos[0] - c.pos[1])
+    botright = min(cards, key=lambda c: -c.pos[0] - c.pos[1])
+    return [botleft.pos, botright.pos, topright.pos, topleft.pos]
+
+
+def poly_area(pts):
+    x = pts[:, 0]
+    y = pts[:, 1]
+    return 0.5*np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+
+
+def calculate_optimized_bounding_rect(words, im):
+    width = im.shape[1]
+    height = im.shape[0]
+
+    positions = [w.pos for w in words]
+    padding = 40
+
+    def loss(x):
+        cost = 0
+        x = np.reshape(x, [4, 2]).astype(np.float32)
+        for p in positions:
+            d = -cv2.pointPolygonTest(x, p, True)
+            d += padding
+            d = max(d, 0)
+            cost += d + d*d*2.5
+
+        cost += poly_area(x) * 0.01
+        return cost
+
+    x0 = np.array([
+        [0, height],
+        [width, height],
+        [width, 0],
+        [0, 0],
+    ]).reshape([8])
+
+    xf = scipy.optimize.fmin_cg(loss, x0, epsilon=0.001)
+    return xf.reshape([4, 2]).tolist()
+
+
+def fit_words_to_grid(cards, bounding_rect):
     output = [[""] * 5 for _ in range(5)]
     if not cards:
         return output
 
     def c(card):
         return complex(card.pos[0], card.pos[1])
-    topleft = c(min(cards, key=lambda c: c.pos[0] + c.pos[1]))
-    topright = c(min(cards, key=lambda c: -c.pos[0] + c.pos[1]))
-    botleft = c(min(cards, key=lambda c: c.pos[0] - c.pos[1]))
-    botright = c(min(cards, key=lambda c: -c.pos[0] - c.pos[1]))
-    positions = list(map(c, cards))
 
+    positions = list(map(c, cards))
     costs = [[] for _ in range(len(positions))]
+    # topleft, topright, botright, botleft = [complex(v[0], v[1]) for v in bounding_rect]
+    botleft, botright, topright, topleft = [complex(v[0], v[1]) for v in bounding_rect]
     for i in range(5):
         for j in range(5):
             a = topleft + (j / 4.0) * (topright - topleft)
@@ -137,6 +180,20 @@ def unique(words):
     return uniqueWords
 
 
+def draw_match_grid(words, rect, im):
+    im = im.copy()
+
+    # cv2.drawContours(cimg, contours, -1, (255, 255, 255), 2)
+    for w in words:
+        rects = np.array([w.rect_vertices])
+        color = (77, 175, 74)
+        cv2.polylines(im, rects, True, color, 2)
+
+    rect = np.array(rect).reshape([1,4,2]).astype(np.int64)
+    cv2.polylines(im, rect, True, (255, 255, 255), 2)
+    show(im)
+
+
 def find_words(imagePath):
     im = cv2.imread(imagePath)
     desiredWidth = 2048
@@ -177,15 +234,17 @@ def find_words(imagePath):
     actualWords = [word for word in uniqueWords if word.word in word_list]
     print(len(actualWords))
 
-    grid = fit_grid_to_words(actualWords)
+    bounding_rect = calculate_optimized_bounding_rect(actualWords, im)
+    draw_match_grid(actualWords, bounding_rect, im)
+    grid = fit_words_to_grid(actualWords, bounding_rect)
     for row in grid:
         print(row)
 
     # cimg = im.copy()
-    # cv2.drawContours(cimg, contours, -1, (0, 255, 0), 2)
+    # cv2.drawContours(cimg, contours, -1, (255, 255, 255), 2)
     # for w in foundWords:
     #     rects = np.array([w.rect_vertices])
-    #     color = (255, 255, 255) if w in actualWords else (255, 0, 0)
+    #     color = (77,175,74) if w in actualWords else (228,26,28)
     #     cv2.polylines(cimg, rects, True, color, 2)
     # show(cimg)
 
