@@ -134,7 +134,7 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
     return contours
 
 
-def find_text_in_contours(contours, image, word_list):
+def find_text_in_contours(contours, image, word_list, is_word):
     def align_rect_horizontal(rect):
         if rect[2] < -45:
             rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] + 90)
@@ -156,6 +156,7 @@ def find_text_in_contours(contours, image, word_list):
         return warp
 
     noSpaces2words = dict((w.upper().replace(" ", ""), w) for w in word_list)
+    results = []
     with tesserocr.PyTessBaseAPI() as tess:
         for c in contours:
             # Find the smallest bounding rectangle that encloses the word contour
@@ -181,7 +182,11 @@ def find_text_in_contours(contours, image, word_list):
             if result in noSpaces2words:
                 result = noSpaces2words[result]
 
-            yield Card(result, rect)
+            if not is_word(result):
+                continue
+
+            results.append(Card(result, rect))
+    return results
 
 
 def unique(words):
@@ -241,14 +246,13 @@ def find_words(imagePath):
     # show(im3)
 
     word_list = [line.strip() for line in open('wordlist.txt')]
-    foundWords = list(find_text_in_contours(contours, blur2, word_list))
+    foundWords = find_text_in_contours(contours, blur2, word_list, lambda w: w in word_list)
     uniqueWords = unique(foundWords)
-    actualWords = [word for word in uniqueWords if word.word in word_list]
-    print(len(actualWords))
+    print(len(uniqueWords))
 
-    bounding_rect = calculate_optimized_bounding_rect(actualWords, im)
-    draw_match_grid(actualWords, bounding_rect, im)
-    grid = fit_words_to_grid(actualWords, bounding_rect)
+    bounding_rect = calculate_optimized_bounding_rect(uniqueWords, im)
+    draw_match_grid(uniqueWords, bounding_rect, im)
+    grid = fit_words_to_grid(uniqueWords, bounding_rect)
     for row in grid:
         print(row)
 
@@ -256,12 +260,12 @@ def find_words(imagePath):
     # cv2.drawContours(cimg, contours, -1, (255, 255, 255), 2)
     # for w in foundWords:
     #     rects = np.array([w.rect_vertices])
-    #     color = (77,175,74) if w in actualWords else (228,26,28)
+    #     color = (77,175,74) if w in uniqueWords else (228,26,28)
     #     cv2.polylines(cimg, rects, True, color, 2)
     # show(cimg)
-    # rect = opt(actualWords, im)
+    # rect = opt(uniqueWords, im)
     
-    return [w.word for w in actualWords], grid
+    return [w.word for w in uniqueWords], grid
 
 
 if __name__ == "__main__":
