@@ -87,6 +87,7 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
 
 
 def find_text_in_contours(contours, image, word_list):
+    noSpaces2words = dict((w.upper().replace(" ", ""), w) for w in word_list)
     with tesserocr.PyTessBaseAPI() as tess:
         for c in contours:
             rect = cv2.minAreaRect(c)
@@ -111,7 +112,11 @@ def find_text_in_contours(contours, image, word_list):
 
             i = Image.fromarray(warp)
             tess.SetImage(i)
+
             result = tess.GetUTF8Text().replace(" ", "").strip().upper()
+
+            if result in noSpaces2words:
+                result = noSpaces2words[result]
 
             points = [[int(x), int(y)] for x, y in r]
             pos = (int(sum(x for x,y in r) / len(r)), int(sum(y for x,y in r) / len(r)))
@@ -139,7 +144,7 @@ def find_words(imagePath):
 
     min_contour_area = 1000
     max_contour_area = 100000
-    dilation = 6
+    dilation = 10
     blur_amount = 3
 
     blur = round(blur_amount * length_unit)
@@ -157,10 +162,10 @@ def find_words(imagePath):
     # show(im3)
 
     word_list = [line.strip() for line in open('wordlist.txt')]
-    foundWords = find_text_in_contours(contours, blur1, word_list)
+    foundWords = list(find_text_in_contours(contours, blur1, word_list))
     uniqueWords = unique(foundWords)
     actualWords = [word for word in uniqueWords if word.word in word_list]
-    print(len(actualWords), actualWords)
+    print(len(actualWords))
 
     grid = fit_grid_to_words(actualWords)
     for row in grid:
@@ -171,7 +176,7 @@ def find_words(imagePath):
     # for w in foundWords:
     #     rects = np.array([w.points])
     #     color = (255, 255, 255) if w in actualWords else (255, 0, 0)
-    #     cimg = cv2.polylines(cimg, rects, True, color, 2)
+    #     cv2.polylines(cimg, rects, True, color, 2)
     # show(cimg)
 
 
