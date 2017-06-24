@@ -58,7 +58,7 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
     edges = cv2.Canny(im, 40, 100)
     # show(edges)
 
-    element = cv2.getStructuringElement(cv2.MORPH_RECT,
+    element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
                                         (2 * dilation + 1, 2 * dilation + 1),
                                         (dilation, dilation))
     dilated = cv2.dilate(edges, element)
