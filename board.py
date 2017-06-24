@@ -150,12 +150,16 @@ def find_words(imagePath):
 
     min_contour_area = 1000
     max_contour_area = 100000
-    dilation = 10
+    dilation = 8
     blur_amount = 3
 
     blur = round(blur_amount * length_unit)
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     blur1 = cv2.GaussianBlur(gray, (blur, blur), 0)
+    blur2 = cv2.GaussianBlur(gray, (1, 1), 0)
+
+    # blur1 = (np.clip((blur1.copy().astype(np.float) - 100)*(255 / (255 - 100))*(255/150), 0, 255)).astype(np.uint8)
+    # show(blur1)
 
     contours = find_contours(blur1,
                              dilation=round(dilation * length_unit),
@@ -168,7 +172,7 @@ def find_words(imagePath):
     # show(im3)
 
     word_list = [line.strip() for line in open('wordlist.txt')]
-    foundWords = list(find_text_in_contours(contours, blur1, word_list))
+    foundWords = list(find_text_in_contours(contours, blur2, word_list))
     uniqueWords = unique(foundWords)
     actualWords = [word for word in uniqueWords if word.word in word_list]
     print(len(actualWords))
