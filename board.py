@@ -94,10 +94,10 @@ def find_text_in_contours(contours, image, word_list):
             rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] - 90)
         return rect
 
-    def extract_rect_with_perspective(rect):
+    def extract_rect_with_perspective(rect, scale):
         rectVertices = cv2.boxPoints(rect)
-        width = int(rect[1][0])
-        height = int(rect[1][1])
+        width = int(rect[1][0] * scale)
+        height = int(rect[1][1] * scale)
         h = np.array([[0, height], [0, 0], [width, 0], [width, height]], np.float32)
         transform = cv2.getPerspectiveTransform(rectVertices, h)
         warp = cv2.warpPerspective(image, transform, (width, height))
@@ -112,7 +112,13 @@ def find_text_in_contours(contours, image, word_list):
             if abs(rect[2]) > 20:
                 continue
 
-            patch = extract_rect_with_perspective(rect)
+            # Scale up the patch by 2x. This improves OCR accuracy
+            scale = 2
+            patch = extract_rect_with_perspective(rect, scale)
+            patch = ((patch - np.min(patch)).astype(np.float) * (255.0 / (np.max(patch) - np.min(patch)))).astype(np.uint8)
+
+            patch = cv2.resize(patch, (patch.shape[1]*2, patch.shape[0]*2))
+            # show(patch)
             tess.SetImage(Image.fromarray(patch))
 
             result = tess.GetUTF8Text().replace(" ", "").strip().upper()
