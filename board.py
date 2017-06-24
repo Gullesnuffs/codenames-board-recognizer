@@ -66,7 +66,7 @@ def calculate_optimized_bounding_rect(words, im):
         [0, 0],
     ]).reshape([8])
 
-    xf = scipy.optimize.fmin_cg(loss, x0, epsilon=0.1, gtol=0.0001, disp=False)
+    xf = scipy.optimize.fmin_cg(loss, x0, epsilon=0.1, gtol=0.0001, maxiter=20, disp=False)
     ret = xf.reshape([4, 2]).tolist()
     ret[0][0] += padding
     ret[0][1] -= padding
