@@ -247,6 +247,14 @@ def find_words(imagePath):
     #     color = (77,175,74) if w in actualWords else (228,26,28)
     #     cv2.polylines(cimg, rects, True, color, 2)
     # show(cimg)
+    # rect = opt(actualWords, im)
+    
+    return [w.word for w in actualWords], grid
 
 
-find_words(sys.argv[1])
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("usage: python3 boardRecognizer.py image")
+        exit(0)
+
+    find_words(sys.argv[1])
