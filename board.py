@@ -25,7 +25,7 @@ length_unit = desiredWidth / 2048
 area_unit = length_unit * length_unit
 
 min_contour_area = 1000
-max_contour_area = 10000
+max_contour_area = 100000
 dilation = 6
 blur_amount = 3
 
