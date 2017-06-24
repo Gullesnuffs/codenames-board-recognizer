@@ -16,6 +16,10 @@ def rect_area(rect):
     return rect[2] * rect[3]
 
 
+def rect_has_point(rect, point):
+    return cv2.pointPolygonTest(cv2.boxPoints(rect), point, False) > 0
+
+
 non_letter = re.compile('[^a-zA-Z]')
 def trim_non_letters(text):
     return re.sub(non_letter, '', text)
@@ -136,7 +140,7 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
             blacklist.append(h.item(3))
 
     contours = [c for i, c in enumerate(contours) if i not in blacklist]
-    contours.sort(key=lambda c: c[0].item(1))
+    contours.sort(key=lambda c: cv2.contourArea(c))
     return contours
 
 
@@ -170,6 +174,10 @@ def find_text_in_contours(contours, image, word_list, is_word):
 
             # Skip rectangles that are rotated too much (not likely to be words)
             if abs(rect[2]) > 20:
+                continue
+
+            # Skip rectangles that contain found words
+            if any(rect_has_point(rect, r.pos) for r in results):
                 continue
 
             # Scale up the patch. This improves OCR accuracy
