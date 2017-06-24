@@ -117,8 +117,13 @@ with tesserocr.PyTessBaseAPI() as tess:
 
 
 wordList = [line.strip() for line in open('wordlist.txt')]
-actualWords = [word for word in foundWords if word.word in wordList]
-print(actualWords)
+
+uniqueWords = []
+for word in foundWords:
+    if all(w.word != word.word for w in uniqueWords):
+        uniqueWords.append(word)
+actualWords = [word for word in uniqueWords if word.word in wordList]
+print(len(actualWords), actualWords)
 
 # cimg = im.copy()
 # cv2.drawContours(cimg, contours, -1, (0, 255, 0), 2)
