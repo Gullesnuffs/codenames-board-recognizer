@@ -14,64 +14,6 @@ def rect_area(rect):
     return rect[2] * rect[3]
 
 
-im = cv2.imread(sys.argv[1])
-desiredWidth = 2048
-scale = desiredWidth / im.shape[0]
-newSize = (round(im.shape[1]*scale), round(im.shape[0]*scale))
-im = cv2.resize(im, newSize)
-
-# Make the constants independent of size
-length_unit = desiredWidth / 2048
-area_unit = length_unit * length_unit
-
-min_contour_area = 1000
-max_contour_area = 100000
-dilation = 6
-blur_amount = 3
-
-gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-
-blur1 = cv2.GaussianBlur(gray, (round(blur_amount*length_unit), round(blur_amount*length_unit)), 0)
-# show(blur1)
-edges = cv2.Canny(blur1, 40, 100)
-# show(edges)
-# blur = cv2.GaussianBlur(edges, (41, 41), 0)
-
-dilation_size = round(dilation * length_unit)
-element = cv2.getStructuringElement(cv2.MORPH_RECT,
-                                    (2 * dilation_size + 1, 2 * dilation_size + 1),
-                                    (dilation_size, dilation_size))
-dilated = cv2.dilate(edges, element)
-# show(dilated)
-
-
-# retval, labels = cv2.connectedComponents(dilated)
-# print(retval, labels)
-contIm, contours, hierarchy = cv2.findContours(dilated, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
-# im2 = im.copy()
-# cv2.drawContours(im2, contours, -1, (255, 255, 255), 2)
-# show(im2)
-
-
-def valid_contour(contour):
-    area = rect_area(cv2.boundingRect(contour))
-    return area > min_contour_area*area_unit and area < max_contour_area*area_unit
-
-
-contours = [c for c in contours if valid_contour(c)]
-
-blacklist = [False] * len(contours)
-for h in hierarchy:
-    if h.item(3) >= 0:
-        blacklist[h.item(3)] = True
-
-contours = [c for i, c in enumerate(contours) if not blacklist[i]]
-
-# im3 = im.copy()
-# cv2.drawContours(im3, contours, -1, (255, 255, 255), 2)
-# show(im3)
-
-
 class Card:
     def __init__(self, word, pos, points):
         self.word = word
@@ -110,60 +52,127 @@ def fit_grid_to_words(cards):
         output[j//5][j%5] = cards[i].word
     return output
 
-foundWords = []
-with tesserocr.PyTessBaseAPI() as tess:
-    cnt = 0
-    for c in contours:
-        rect = cv2.minAreaRect(c)
-        if rect[2] < -45:
-            rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] + 90)
-        if rect[2] > 45:
-            rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] - 90)
+def find_contours(im, dilation, min_contour_area, max_contour_area):
+    # show(blur1)
+    edges = cv2.Canny(im, 40, 100)
+    # show(edges)
+    # blur = cv2.GaussianBlur(edges, (41, 41), 0)
 
-        # Skip rectangles that are rotated too much (not likely to be words)
-        if abs(rect[2]) > 20:
-            continue
+    element = cv2.getStructuringElement(cv2.MORPH_RECT,
+                                        (2 * dilation + 1, 2 * dilation + 1),
+                                        (dilation, dilation))
+    dilated = cv2.dilate(edges, element)
+    # show(dilated)
 
-        r = cv2.boxPoints(rect)
+    # retval, labels = cv2.connectedComponents(dilated)
+    # print(retval, labels)
+    contIm, contours, hierarchy = cv2.findContours(dilated, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
+    # im2 = im.copy()
+    # cv2.drawContours(im2, contours, -1, (255, 255, 255), 2)
+    # show(im2)
 
-        width = int(rect[1][0])
-        height = int(rect[1][1])
-        h = np.array([[0, height], [0, 0], [width, 0], [width, height]], np.float32)
-        transform = cv2.getPerspectiveTransform(r, h)
-        warp = cv2.warpPerspective(blur1, transform, (width, height))
+    def valid_contour(contour):
+        area = rect_area(cv2.boundingRect(contour))
+        return area > min_contour_area and area < max_contour_area
 
-        # warp = ((warp - np.min(warp)).astype(np.float) * (255.0 / (np.max(warp) - np.min(warp)))).astype(np.uint8)
+    contours = [c for c in contours if valid_contour(c)]
 
-        i = Image.fromarray(warp)
-        tess.SetImage(i)
-        result = tess.GetUTF8Text().replace(" ", "").strip().upper()
+    blacklist = [False] * len(contours)
+    for h in hierarchy:
+        if h.item(3) >= 0:
+            blacklist[h.item(3)] = True
 
-        points = [[int(x), int(y)] for x,y in r]
-        pos = (int(sum(x for x,y in r) / len(r)), int(sum(y for x,y in r) / len(r)))
-        foundWords.append(Card(result, pos, points))
-
-        cnt += 1
-        # if cnt <= 10:
-        #    i.show()
+    contours = [c for i, c in enumerate(contours) if not blacklist[i]]
+    return contours
 
 
-wordList = [line.strip() for line in open('wordlist.txt')]
+def find_text_in_contours(contours, image, word_list):
+    with tesserocr.PyTessBaseAPI() as tess:
+        for c in contours:
+            rect = cv2.minAreaRect(c)
+            if rect[2] < -45:
+                rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] + 90)
+            if rect[2] > 45:
+                rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] - 90)
 
-uniqueWords = []
-for word in foundWords:
-    if all(w.word != word.word for w in uniqueWords):
-        uniqueWords.append(word)
-actualWords = [word for word in uniqueWords if word.word in wordList]
-print(len(actualWords), actualWords)
+            # Skip rectangles that are rotated too much (not likely to be words)
+            if abs(rect[2]) > 20:
+                continue
 
-grid = fit_grid_to_words(actualWords)
-for row in grid:
-    print(row)
+            r = cv2.boxPoints(rect)
 
-# cimg = im.copy()
-# cv2.drawContours(cimg, contours, -1, (0, 255, 0), 2)
-# for w in foundWords:
-#     rects = np.array([w.points])
-#     color = (255, 255, 255) if w in actualWords else (255, 0, 0)
-#     cimg = cv2.polylines(cimg, rects, True, color, 2)
-# show(cimg)
+            width = int(rect[1][0])
+            height = int(rect[1][1])
+            h = np.array([[0, height], [0, 0], [width, 0], [width, height]], np.float32)
+            transform = cv2.getPerspectiveTransform(r, h)
+            warp = cv2.warpPerspective(image, transform, (width, height))
+
+            # warp = ((warp - np.min(warp)).astype(np.float) * (255.0 / (np.max(warp) - np.min(warp)))).astype(np.uint8)
+
+            i = Image.fromarray(warp)
+            tess.SetImage(i)
+            result = tess.GetUTF8Text().replace(" ", "").strip().upper()
+
+            points = [[int(x), int(y)] for x, y in r]
+            pos = (int(sum(x for x,y in r) / len(r)), int(sum(y for x,y in r) / len(r)))
+            yield Card(result, pos, points)
+
+
+def unique(words):
+    uniqueWords = []
+    for word in words:
+        if all(w.word != word.word for w in uniqueWords):
+            uniqueWords.append(word)
+    return uniqueWords
+
+
+def find_words(imagePath):
+    im = cv2.imread(imagePath)
+    desiredWidth = 2048
+    scale = desiredWidth / im.shape[0]
+    newSize = (round(im.shape[1] * scale), round(im.shape[0] * scale))
+    im = cv2.resize(im, newSize)
+
+    # Make the settings independent of size
+    length_unit = desiredWidth / 2048
+    area_unit = length_unit * length_unit
+
+    min_contour_area = 1000
+    max_contour_area = 100000
+    dilation = 6
+    blur_amount = 3
+
+    blur = round(blur_amount * length_unit)
+    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    blur1 = cv2.GaussianBlur(gray, (blur, blur), 0)
+
+    contours = find_contours(blur1,
+                             dilation=round(dilation * length_unit),
+                             min_contour_area=min_contour_area * area_unit,
+                             max_contour_area=max_contour_area * area_unit,
+                             )
+
+    # im3 = im.copy()
+    # cv2.drawContours(im3, contours, -1, (255, 255, 255), 2)
+    # show(im3)
+
+    word_list = [line.strip() for line in open('wordlist.txt')]
+    foundWords = find_text_in_contours(contours, blur1, word_list)
+    uniqueWords = unique(foundWords)
+    actualWords = [word for word in uniqueWords if word.word in word_list]
+    print(len(actualWords), actualWords)
+
+    grid = fit_grid_to_words(actualWords)
+    for row in grid:
+        print(row)
+
+    # cimg = im.copy()
+    # cv2.drawContours(cimg, contours, -1, (0, 255, 0), 2)
+    # for w in foundWords:
+    #     rects = np.array([w.points])
+    #     color = (255, 255, 255) if w in actualWords else (255, 0, 0)
+    #     cimg = cv2.polylines(cimg, rects, True, color, 2)
+    # show(cimg)
+
+
+find_words(sys.argv[1])
