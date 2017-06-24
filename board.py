@@ -143,31 +143,36 @@ def find_text_in_contours(contours, image, word_list):
         return rect
 
     def extract_rect_with_perspective(rect, scale):
+        # Bounding vertices of the word on the board
         rectVertices = cv2.boxPoints(rect)
         width = int(rect[1][0] * scale)
         height = int(rect[1][1] * scale)
+        # Bounding vertices of the word in the target image
         h = np.array([[0, height], [0, 0], [width, 0], [width, height]], np.float32)
         transform = cv2.getPerspectiveTransform(rectVertices, h)
+        # Copy the word so that its bounding vertices line up with 'h'.
+        # This corrects for perspective and rotation
         warp = cv2.warpPerspective(image, transform, (width, height))
         return warp
 
     noSpaces2words = dict((w.upper().replace(" ", ""), w) for w in word_list)
     with tesserocr.PyTessBaseAPI() as tess:
         for c in contours:
+            # Find the smallest bounding rectangle that encloses the word contour
             rect = align_rect_horizontal(cv2.minAreaRect(c))
 
             # Skip rectangles that are rotated too much (not likely to be words)
             if abs(rect[2]) > 20:
                 continue
 
-            # Scale up the patch by 2x. This improves OCR accuracy
-            scale = 2
+            # Scale up the patch. This improves OCR accuracy
+            scale = 1.5
             patch = extract_rect_with_perspective(rect, scale)
-            patch = ((patch - np.min(patch)).astype(np.float) * (255.0 / (np.max(patch) - np.min(patch)))).astype(np.uint8)
-            #r = cv2.boxPoints(rect)
-            #pos = rect[0]
 
-            patch = cv2.resize(patch, (patch.shape[1]*2, patch.shape[0]*2))
+            # Soft thresholding. This doesn't seem to help though
+            # patch = ((patch - np.min(patch)).astype(np.float) * (255.0 / (np.max(patch) - np.min(patch)))).astype(np.uint8)
+
+            # patch = cv2.resize(patch, (patch.shape[1]*2, patch.shape[0]*2))
             # show(patch)
             tess.SetImage(Image.fromarray(patch))
 
