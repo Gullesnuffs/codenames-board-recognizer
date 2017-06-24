@@ -1,7 +1,6 @@
 from __future__ import print_function
 import os, sys, time
 from PIL import Image, ImageFilter, ImageEnhance
-from subprocess import call, DEVNULL
 import tesserocr
 
 
