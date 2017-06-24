@@ -67,7 +67,16 @@ def calculate_optimized_bounding_rect(words, im):
     ]).reshape([8])
 
     xf = scipy.optimize.fmin_cg(loss, x0, epsilon=0.001)
-    return xf.reshape([4, 2]).tolist()
+    ret = xf.reshape([4, 2]).tolist()
+    ret[0][0] += padding
+    ret[0][1] -= padding
+    ret[1][0] -= padding
+    ret[1][1] -= padding
+    ret[2][0] -= padding
+    ret[2][1] += padding
+    ret[3][0] += padding
+    ret[3][1] += padding
+    return ret
 
 
 def fit_words_to_grid(cards, bounding_rect):
@@ -75,12 +84,8 @@ def fit_words_to_grid(cards, bounding_rect):
     if not cards:
         return output
 
-    def c(card):
-        return complex(card.pos[0], card.pos[1])
-
-    positions = list(map(c, cards))
+    positions = [complex(c.pos[0], c.pos[1]) for c in cards]
     costs = [[] for _ in range(len(positions))]
-    # topleft, topright, botright, botleft = [complex(v[0], v[1]) for v in bounding_rect]
     botleft, botright, topright, topleft = [complex(v[0], v[1]) for v in bounding_rect]
     for i in range(5):
         for j in range(5):
