@@ -1,7 +1,7 @@
 import os
 import boardRecognizer
 
-path = "examples"
+path = "examples/board"
 samples = []  # type: List[float]
 for file in os.listdir(path):
     words, grid = boardRecognizer.find_words(path + "/" + file)

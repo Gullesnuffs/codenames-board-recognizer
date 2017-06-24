@@ -17,5 +17,5 @@ pip3 install pillow tesserocr
 
 ## Usage
 ~~~
-python3 boardRecognizer.py examples/example_board1.jpg
+python3 boardRecognizer.py examples/board/example1.jpg
 ~~~
