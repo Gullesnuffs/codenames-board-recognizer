@@ -159,6 +159,8 @@ def find_text_in_contours(contours, image, word_list):
             scale = 2
             patch = extract_rect_with_perspective(rect, scale)
             patch = ((patch - np.min(patch)).astype(np.float) * (255.0 / (np.max(patch) - np.min(patch)))).astype(np.uint8)
+            #r = cv2.boxPoints(rect)
+            #pos = rect[0]
 
             patch = cv2.resize(patch, (patch.shape[1]*2, patch.shape[0]*2))
             # show(patch)
