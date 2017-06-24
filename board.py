@@ -1,6 +1,7 @@
 import cv2
 import sys
 import numpy as np
+import scipy.optimize
 from PIL import Image
 import tesserocr
 
@@ -72,13 +73,42 @@ contours = [c for i, c in enumerate(contours) if not blacklist[i]]
 
 
 class Card:
-    def __init__(self, points, word):
-        self.points = points
+    def __init__(self, word, pos, points):
         self.word = word
+        self.pos = pos
+        self.points = points
 
     def __repr__(self):
         return self.word
 
+
+def fit_grid_to_words(cards):
+    output = [[""] * 5 for _ in range(5)]
+    if not cards:
+        return output
+
+    def c(card):
+        return complex(card.pos[0], card.pos[1])
+    topleft = c(min(cards, key=lambda c: c.pos[0] + c.pos[1]))
+    topright = c(min(cards, key=lambda c: -c.pos[0] + c.pos[1]))
+    botleft = c(min(cards, key=lambda c: c.pos[0] - c.pos[1]))
+    botright = c(min(cards, key=lambda c: -c.pos[0] - c.pos[1]))
+    positions = list(map(c, cards))
+
+    costs = [[] for _ in range(len(positions))]
+    for i in range(5):
+        for j in range(5):
+            a = topleft + (j / 4.0) * (topright - topleft)
+            b = botleft + (j / 4.0) * (botright - botleft)
+            p = b * (i / 4.0) + a * (1 - i / 4.0)
+            for k in range(len(positions)):
+                dis = (p - positions[k])
+                costs[k].append(dis.imag * dis.imag + dis.real * dis.real)
+
+    row_ind, col_ind = scipy.optimize.linear_sum_assignment(costs)
+    for i, j in zip(row_ind, col_ind):
+        output[j//5][j%5] = cards[i].word
+    return output
 
 foundWords = []
 with tesserocr.PyTessBaseAPI() as tess:
@@ -109,7 +139,8 @@ with tesserocr.PyTessBaseAPI() as tess:
         result = tess.GetUTF8Text().replace(" ", "").strip().upper()
 
         points = [[int(x), int(y)] for x,y in r]
-        foundWords.append(Card(points, result))
+        pos = (int(sum(x for x,y in r) / len(r)), int(sum(y for x,y in r) / len(r)))
+        foundWords.append(Card(result, pos, points))
 
         cnt += 1
         # if cnt <= 10:
@@ -124,6 +155,10 @@ for word in foundWords:
         uniqueWords.append(word)
 actualWords = [word for word in uniqueWords if word.word in wordList]
 print(len(actualWords), actualWords)
+
+grid = fit_grid_to_words(actualWords)
+for row in grid:
+    print(row)
 
 # cimg = im.copy()
 # cv2.drawContours(cimg, contours, -1, (0, 255, 0), 2)
