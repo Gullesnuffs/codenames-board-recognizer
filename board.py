@@ -140,7 +140,7 @@ def unique(words):
 def find_words(imagePath):
     im = cv2.imread(imagePath)
     desiredWidth = 2048
-    scale = desiredWidth / im.shape[0]
+    scale = desiredWidth / max(im.shape[0], im.shape[1])
     newSize = (round(im.shape[1] * scale), round(im.shape[0] * scale))
     im = cv2.resize(im, newSize)
 
