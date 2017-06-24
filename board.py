@@ -14,15 +14,29 @@ def rect_area(rect):
 
 
 im = cv2.imread(sys.argv[1])
+desiredWidth = 2048
+scale = desiredWidth / im.shape[0]
+newSize = (round(im.shape[1]*scale), round(im.shape[0]*scale))
+im = cv2.resize(im, newSize)
+
+# Make the constants independent of size
+length_unit = desiredWidth / 2048
+area_unit = length_unit * length_unit
+
+min_contour_area = 1000
+max_contour_area = 10000
+dilation = 6
+blur_amount = 3
+
 gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 
-blur1 = cv2.GaussianBlur(gray, (3, 3), 0)
+blur1 = cv2.GaussianBlur(gray, (round(blur_amount*length_unit), round(blur_amount*length_unit)), 0)
 # show(blur1)
 edges = cv2.Canny(blur1, 40, 100)
 # show(edges)
 # blur = cv2.GaussianBlur(edges, (41, 41), 0)
 
-dilation_size = 6
+dilation_size = round(dilation * length_unit)
 element = cv2.getStructuringElement(cv2.MORPH_RECT,
                                     (2 * dilation_size + 1, 2 * dilation_size + 1),
                                     (dilation_size, dilation_size))
@@ -37,7 +51,13 @@ contIm, contours, hierarchy = cv2.findContours(dilated, mode=cv2.RETR_TREE, meth
 # cv2.drawContours(im2, contours, -1, (255, 255, 255), 2)
 # show(im2)
 
-contours = [c for c in contours if cv2.contourArea(c) > 1000 and rect_area(cv2.boundingRect(c)) < 100000]
+
+def valid_contour(contour):
+    area = rect_area(cv2.boundingRect(contour))
+    return area > min_contour_area*area_unit and area < max_contour_area*area_unit
+
+
+contours = [c for c in contours if valid_contour(c)]
 
 blacklist = [False] * len(contours)
 for h in hierarchy:
