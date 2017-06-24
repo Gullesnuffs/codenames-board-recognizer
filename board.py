@@ -1,5 +1,6 @@
 import cv2
 import sys
+import re
 import numpy as np
 import scipy.optimize
 from PIL import Image
@@ -13,6 +14,11 @@ def show(im):
 
 def rect_area(rect):
     return rect[2] * rect[3]
+
+
+non_letter = re.compile('[^a-zA-Z]')
+def trim_non_letters(text):
+    return re.sub(non_letter, '', text)
 
 
 class Card:
@@ -177,7 +183,7 @@ def find_text_in_contours(contours, image, word_list, is_word):
             # show(patch)
             tess.SetImage(Image.fromarray(patch))
 
-            result = tess.GetUTF8Text().replace(" ", "").strip().upper()
+            result = trim_non_letters(tess.GetUTF8Text().upper())
 
             if result in noSpaces2words:
                 result = noSpaces2words[result]
