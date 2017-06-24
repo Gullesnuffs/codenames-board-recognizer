@@ -262,6 +262,6 @@ def find_words(imagePath):
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("usage: python3 boardRecognizer.py image")
-        exit(0)
+        exit(1)
 
     find_words(sys.argv[1])
