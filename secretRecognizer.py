@@ -13,22 +13,18 @@ def resize(im, max_width, max_height):
 def find_edges(im, threshold):
   im = im.filter(ImageFilter.GaussianBlur)
   im_edges = im.filter(ImageFilter.FIND_EDGES)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
+  im_edges = im_edges.filter(ImageFilter.GaussianBlur(3))
+  # for _ in range(3):
+    # im_edges = im_edges.filter(ImageFilter.GaussianBlur(2))
   im_edges = im_edges.convert('L')
   im_edges = im_edges.point(lambda x: 0 if x > 1 else 255, '1')
   im_edges = im_edges.convert('RGB')
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
-  im_edges = im_edges.filter(ImageFilter.GaussianBlur)
+  im_edges = im_edges.filter(ImageFilter.GaussianBlur(6))
+  # for _ in range(8):
+    # im_edges = im_edges.filter(ImageFilter.GaussianBlur(2))
   im_edges = im_edges.convert('L')
-  return im_edges.point(lambda x: 0 if x <= threshold else 255, '1')
+  im_edges = im_edges.point(lambda x: 0 if x <= threshold else 255, '1')
+  return im_edges
 
 
 def dfs_segmentation(rgb_im, im_edges, minimumArea):
@@ -281,15 +277,19 @@ def find_words(imagePath):
   width, height = im_edges.size
   totalArea = width * height
 
-  minimumPartOfImage = 0.0002
+  minimumPartOfImage = 0.0001
   minimumArea = totalArea * minimumPartOfImage
   boxes = list(dfs_segmentation(rgb_im, im_edges, minimumArea))
   boxes = filter_outer_boxes(boxes)
-  if len(boxes) > 30:
+  im_edges.show()
+  print(len(boxes))
+  if len(boxes) > 35:
     im_edges = find_edges(im, 140)
     im_edges = resize(im_edges, 1250, 750)
     boxes = list(dfs_segmentation(rgb_im, im_edges, minimumArea))
     boxes = filter_outer_boxes(boxes)
+    print(len(boxes))
+    im_edges.show()
     if len(boxes) < 24:
       im_edges = find_edges(im, 170)
       im_edges = resize(im_edges, 1250, 750)
