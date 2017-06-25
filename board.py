@@ -266,13 +266,10 @@ def find_words(imagePath):
 
     foundWords = find_text_in_contours(contours, blur2)
     uniqueWords = unique(foundWords)
-    print(len(uniqueWords))
 
     bounding_rect = calculate_optimized_bounding_rect(uniqueWords, im)
-    draw_match_grid(uniqueWords, bounding_rect, im)
+    # draw_match_grid(uniqueWords, bounding_rect, im)
     grid = fit_words_to_grid(uniqueWords, bounding_rect)
-    for row in grid:
-        print(row)
 
     # cimg = im.copy()
     # cv2.drawContours(cimg, contours, -1, (255, 255, 255), 2)
@@ -291,4 +288,8 @@ if __name__ == "__main__":
         print("usage: python3 boardRecognizer.py image")
         exit(1)
 
-    find_words(sys.argv[1])
+    words, grid = find_words(sys.argv[1])
+
+    print(len(words))
+    for row in grid:
+        print(row)
