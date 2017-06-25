@@ -2,7 +2,6 @@ from __future__ import print_function
 import os, sys, time
 from PIL import Image, ImageFilter, ImageEnhance
 from subprocess import call, DEVNULL
-import tesserocr
 from termcolor import colored
 
 
@@ -32,7 +31,9 @@ def find_edges(im, threshold):
   return im_edges.point(lambda x: 0 if x <= threshold else 255, '1')
 
 
-def bfs_segmentation(rgb_im, im_edges, minimumArea):
+def dfs_segmentation(rgb_im, im_edges, minimumArea):
+  # im_edges.show()
+  # rgb_im.show()
   # Do DFS from each white pixel to find regions of white pixels
   width, height = im_edges.size
   visited = [[False] * height for _ in range(width)]
@@ -40,6 +41,7 @@ def bfs_segmentation(rgb_im, im_edges, minimumArea):
   DX = [1, 0, -1, 0]
   DY = [0, 1, 0, -1]
   data = im_edges.getdata(0)
+  rgb_data = rgb_im.getdata()
   for x in range(width):
     for y in range(height):
       if visited[x][y]:
@@ -67,7 +69,7 @@ def bfs_segmentation(rgb_im, im_edges, minimumArea):
             continue
           if visited[nx][ny]:
             continue
-          r, g, b = rgb_im.getpixel((nx, ny))
+          r, g, b = rgb_data[ny * width + nx]
           totR += r
           totG += g
           totB += b
@@ -78,12 +80,13 @@ def bfs_segmentation(rgb_im, im_edges, minimumArea):
           minY = min(minY, ny)
           maxY = max(maxY, ny)
           q.append((nx, ny))
-      regionWidth = maxX - minX
-      regionHeight = maxY - minY
-      area = (regionWidth+1)*(regionHeight+1)
+      regionWidth = maxX - minX + 1
+      regionHeight = maxY - minY + 1
+      area = regionWidth * regionHeight
       if area < minimumArea:
         continue
       box = (minX, minY, maxX, maxY)
+      # print("found box " + str(box) + " " + str(area))
       box = clamp_aabb(expand_aabb(box, 3), width, height)
       averageR = totR/totPixels
       averageG = totG/totPixels
@@ -91,8 +94,7 @@ def bfs_segmentation(rgb_im, im_edges, minimumArea):
       yield (averageR, averageG, averageB, box)
 
 
-def ocr(rgb_im, box):
-  region = rgb_im.crop(box[3])
+def tocard(box):
   r = box[0]
   g = box[1]
   b = box[2]
@@ -101,13 +103,13 @@ def ocr(rgb_im, box):
   elif b > r*2 and b > g*0.8 and b > 60:
     result = "b"
   elif r > 40 and g > 40 and b > 40:
-    result = "g"
+    result = "c"
   else:
     result = "a"
   box = box[3]
   midX = (box[0] + box[2])/2
   midY = (box[1] + box[3])/2
-  return (result, midX, midY)
+  return Card(result, (midX, midY))
 
 
 def bounding_box_area(box):
@@ -150,24 +152,30 @@ def filter_outer_boxes(boxes):
   boxes.sort(key=lambda box: bounding_box_area(box))
   result = []
   for box in boxes:
-    print(box)
     if all(not(aabb_overlap(scale_aabb(box[3], 0.8), scale_aabb(b[3], 0.8))) for b in result):
+      # print(str(box) + " - YES " + tocard(box).word)
       result.append(box)
+    # else:
+      # print(str(box) + " - NO")
   return result
 
 
-def fit_grid_to_words(words, wordPositions, width, height):
+class Card:
+    def __init__(self, word, pos):
+        self.word = word
+        self.pos = pos
+
+    def __repr__(self):
+        return self.word
+
+
+def fit_grid_to_words(cards, width, height):
   def get_grid_score(x0, y0, dx, dy):
-    wordIndex = []
-    for i in range(5):
-      wordIndex.append([])
-      for j in range(5):
-        wordIndex[i].append(-1)
+    wordIndex = [[-1] * 5 for _ in range(5)]
     distances = []
-    used = []
-    for ind in range(len(wordPositions)):
-      used.append(False)
-      x, y = wordPositions[ind]
+    used = [False] * len(cards)
+    for ind in range(len(cards)):
+      x, y = cards[ind].pos
       for i in range(5):
         for j in range(5):
           sx = x0 + dx * i
@@ -179,7 +187,7 @@ def fit_grid_to_words(words, wordPositions, width, height):
     distances = sorted(distances)
     score = 0
     maxDis = 40000
-    numGrey = 0
+    numCivilian = 0
     numBlue = 0
     numRed = 0
     numAssassin = 0
@@ -190,19 +198,19 @@ def fit_grid_to_words(words, wordPositions, width, height):
         continue
       if wordIndex[i][j] != -1:
         continue
-      if words[ind] == 'g':
-        if numGrey == 7:
+      if cards[ind].word == 'c':
+        if numCivilian == 7:
           continue
-        numGrey += 1
-      if words[ind] == 'b':
+        numCivilian += 1
+      if cards[ind].word == 'b':
         if numBlue == 9 or (numRed == 9 and numBlue == 8):
           continue
         numBlue += 1
-      if words[ind] == 'r':
+      if cards[ind].word == 'r':
         if numRed == 9 or (numBlue == 9 and numRed == 8):
           continue
         numRed += 1
-      if words[ind] == 'a':
+      if cards[ind].word == 'a':
         if numAssassin == 1:
           continue
         numAssassin += 1
@@ -254,54 +262,57 @@ def fit_grid_to_words(words, wordPositions, width, height):
       if bestWordIndex[j][i] == -1:
         grid[i].append("")
       else:
-        grid[i].append(words[bestWordIndex[j][i]])
+        grid[i].append(cards[bestWordIndex[j][i]].word)
 
   return grid
 
 
 def find_words(imagePath):
-  wordList = ['r', 'b', 'g', 'a']
-
   im = Image.open(imagePath)
   im = resize(im, 2500, 1500)
   width, height = im.size
 
   rgb_im = im.convert("RGB")
-  totalArea = width * height
 
   im_edges = find_edges(im, 200)
 
+  im_edges = resize(im_edges, 1250, 750)
+  rgb_im = resize(rgb_im, 1250, 750)
+  width, height = im_edges.size
+  totalArea = width * height
+
   minimumPartOfImage = 0.0002
   minimumArea = totalArea * minimumPartOfImage
-  boxes = list(bfs_segmentation(rgb_im, im_edges, minimumArea))
+  boxes = list(dfs_segmentation(rgb_im, im_edges, minimumArea))
   boxes = filter_outer_boxes(boxes)
   if len(boxes) > 30:
     im_edges = find_edges(im, 140)
-    boxes = list(bfs_segmentation(rgb_im, im_edges, minimumArea))
+    im_edges = resize(im_edges, 1250, 750)
+    boxes = list(dfs_segmentation(rgb_im, im_edges, minimumArea))
     boxes = filter_outer_boxes(boxes)
     if len(boxes) < 24:
       im_edges = find_edges(im, 170)
-      boxes = list(bfs_segmentation(rgb_im, im_edges, minimumArea))
+      im_edges = resize(im_edges, 1250, 750)
+      boxes = list(dfs_segmentation(rgb_im, im_edges, minimumArea))
       boxes = filter_outer_boxes(boxes)
 
-  rgb_im = ImageEnhance.Contrast(rgb_im).enhance(1.4)
-  foundWords = [ocr(rgb_im, box) for box in boxes]
-  foundWords = [w for w in foundWords if w[0].strip() != ""]
-  actualWords = [word for word in foundWords if word[0] in wordList]
+  # rgb_im = ImageEnhance.Contrast(rgb_im).enhance(1.4)
+  # for box in boxes:
+    # rgb_im.crop(box[3]).show()
 
-  print("Unrecognized words:\n" + '\n'.join(["  " + w[0].replace('\n', '\\n') for w in foundWords if w not in actualWords]))
+  foundWords = [tocard(box) for box in boxes]
+  foundWords = [w for w in foundWords if w.word]
 
-  wordPositions = [(word[1], word[2]) for word in actualWords]
-  words = [word[0] for word in actualWords]
-  grid = fit_grid_to_words(words, wordPositions, width, height)
+  grid = fit_grid_to_words(foundWords, width, height)
 
+  words = [w.word for w in foundWords]
   return words, grid
 
 
 if __name__ == "__main__":
   if len(sys.argv) != 2:
-    print("usage: python3 boardRecognizer.py image")
-    exit(0)
+    print("usage: python3 secretRecognizer.py image")
+    exit(1)
   foundWords, grid = find_words(sys.argv[1])
   print("Found " + str(len(foundWords)) + " candidates!")
   for i in range(5):
@@ -311,7 +322,7 @@ if __name__ == "__main__":
         line += colored('■ ', 'blue')
       elif grid[i][j] == "r":
         line += colored('■ ', 'red')
-      elif grid[i][j] == "g":
+      elif grid[i][j] == "c":
         line += colored('■ ', 'grey')
       elif grid[i][j] == "a":
         line += colored('■ ', 'magenta')
