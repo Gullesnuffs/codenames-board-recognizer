@@ -132,6 +132,10 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
     # cv2.drawContours(im2, contours, -1, (255, 255, 255), 2)
     # show(im2)
 
+    if not contours:
+        # Then hierarchy is None, so don't proceed.
+        return []
+
     def valid_contour(contour):
         area = rect_area(cv2.boundingRect(contour))
         return area > min_contour_area and area < max_contour_area
