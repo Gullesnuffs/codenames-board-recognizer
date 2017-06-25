@@ -3,7 +3,6 @@ import os, sys, time
 from PIL import Image, ImageFilter, ImageEnhance
 from subprocess import call, DEVNULL
 import tesserocr
-from munkres import Munkres, print_matrix
 from termcolor import colored
 
 
@@ -92,7 +91,7 @@ def bfs_segmentation(rgb_im, im_edges, minimumArea):
       yield (averageR, averageG, averageB, box)
 
 
-def ocr(rgb_im, tess, box):
+def ocr(rgb_im, box):
   region = rgb_im.crop(box[3])
   r = box[0]
   g = box[1]
@@ -158,7 +157,6 @@ def filter_outer_boxes(boxes):
 
 
 def fit_grid_to_words(words, wordPositions, width, height):
-  munkres = Munkres()
   def get_grid_score(x0, y0, dx, dy):
     wordIndex = []
     for i in range(5):
@@ -287,8 +285,7 @@ def find_words(imagePath):
       boxes = filter_outer_boxes(boxes)
 
   rgb_im = ImageEnhance.Contrast(rgb_im).enhance(1.4)
-  with tesserocr.PyTessBaseAPI() as tess:
-    foundWords = [ocr(rgb_im, tess, box) for box in boxes]
+  foundWords = [ocr(rgb_im, box) for box in boxes]
   foundWords = [w for w in foundWords if w[0].strip() != ""]
   actualWords = [word for word in foundWords if word[0] in wordList]
 
