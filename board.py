@@ -1,11 +1,16 @@
 import cv2
 import sys
 import re
+import os
 import numpy as np
 import scipy.optimize
 from PIL import Image
 import tesserocr
 import scipy.optimize
+
+
+module_path = os.path.dirname(__file__) or '.'
+word_list = [line.strip() for line in open(module_path + '/wordlist.txt')]
 
 
 def show(im):
@@ -144,7 +149,7 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
     return contours
 
 
-def find_text_in_contours(contours, image, word_list, is_word):
+def find_text_in_contours(contours, image):
     def align_rect_horizontal(rect):
         if rect[2] < -45:
             rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] + 90)
@@ -196,7 +201,7 @@ def find_text_in_contours(contours, image, word_list, is_word):
             if result in noSpaces2words:
                 result = noSpaces2words[result]
 
-            if not is_word(result):
+            if not result in word_list:
                 continue
 
             results.append(Card(result, rect))
@@ -259,8 +264,7 @@ def find_words(imagePath):
     # cv2.drawContours(im3, contours, -1, (255, 255, 255), 2)
     # show(im3)
 
-    word_list = [line.strip() for line in open('wordlist.txt')]
-    foundWords = find_text_in_contours(contours, blur2, word_list, lambda w: w in word_list)
+    foundWords = find_text_in_contours(contours, blur2)
     uniqueWords = unique(foundWords)
     print(len(uniqueWords))
 
