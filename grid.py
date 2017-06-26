@@ -1,6 +1,7 @@
 from __future__ import print_function
 import cv2
 import sys
+from _grid import ffi, lib
 import numpy as np
 from termcolor import colored
 
@@ -25,53 +26,23 @@ def dist(p, q):
     return (dx*dx + dy*dy) ** 0.5
 
 
+@ffi.def_extern()
+def dfs_segmentation_append(minX, minY, maxX, maxY, data):
+    li = ffi.from_handle(data)
+    li.append((minX, minY, maxX, maxY))
+
+
 def dfs_segmentation(im, minimumArea, maximumArea):
-    # Do DFS from each black pixel to find regions of black pixels
     height, width = im.shape
-    visited = [[False] * width for _ in range(height)]
+    assert im.strides == (width, 1)
+    imdata = ffi.cast("unsigned char *", im.ctypes.data)
 
-    for i in range(height):
-        visited[i][0] = visited[i][width-1] = True
-    for j in range(width):
-        visited[0][j] = visited[height-1][j] = True
-
-    DX = [1, 0, -1, 0]
-    DY = [0, 1, 0, -1]
-    q = []
-    for x in range(width):
-        for y in range(height):
-            if visited[y][x]:
-                continue
-            if im[y][x] == 255:
-                continue
-            area = 0
-            q.append((x, y))
-            minX = maxX = x
-            minY = maxY = y
-            visited[y][x] = True
-            while len(q) > 0:
-                cx, cy = q.pop()
-                area += 1
-                minX = min(minX, cx)
-                maxX = max(maxX, cx)
-                minY = min(minY, cy)
-                maxY = max(maxY, cy)
-                for di in range(4):
-                    nx = cx + DX[di]
-                    ny = cy + DY[di]
-                    if visited[ny][nx]:
-                        continue
-                    if im[ny][nx] == 255:
-                        continue
-                    visited[ny][nx] = True
-                    q.append((nx, ny))
-            regionWidth = maxX - minX + 1
-            regionHeight = maxY - minY + 1
-            bbarea = regionWidth * regionHeight
-            if bbarea < minimumArea or bbarea > maximumArea:
-                continue
-            box = (minX, minY, maxX, maxY)
-            yield box
+    res = []
+    lib.dfs_segmentation(
+        height, width, imdata,
+        minimumArea, maximumArea,
+        lib.dfs_segmentation_append, ffi.new_handle(res))
+    return res
 
 
 def fit_grid2(points, topleft, topright, botleft, botright):
@@ -307,7 +278,8 @@ def find_grid(fname):
 
     height, width = gray.shape
 
-    areas = list(dfs_segmentation(gray, 50, 512**2 // 20))
+    areas = dfs_segmentation(gray, 50, 512**2 // 20)
+
     points = [((ar[1] + ar[3]) / 2, (ar[0] + ar[2]) / 2) for ar in areas]
     print(len(points))
 
