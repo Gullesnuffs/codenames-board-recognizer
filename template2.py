@@ -22,7 +22,7 @@ img2 = cv2.imread(sys.argv[1])
 img2 = resize(img2, 1024)
 # img2 = cv2.GaussianBlur(img2, (0, 0), 8)
 
-path = "examples/secret4.jpg"
+path = "examples/templates/secret4.jpg"
 template = cv2.imread(path)
 template = resize(template, 1024)
 
