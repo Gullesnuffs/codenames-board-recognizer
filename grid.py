@@ -343,10 +343,13 @@ def find_grid(fname):
                     sumr += r
                     sum1 += 1
 
-            if sum1 > 0:
-                sumb /= sum1
-                sumg /= sum1
-                sumr /= sum1
+            # If the cell is outside the picture, detection must have gone wrong.
+            if sum1 == 0:
+                return None
+
+            sumb /= sum1
+            sumg /= sum1
+            sumr /= sum1
 
             print(X, Y, sumb, sumg, sumr, rad)
             gridcolors[i][j] = (sumb, sumg, sumr)
