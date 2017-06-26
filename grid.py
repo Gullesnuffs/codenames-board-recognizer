@@ -375,8 +375,28 @@ def find_grid(fname):
                 for j in range(11):
                     gray[max(min(y+i, height-1), 0)][max(min(x+j, width-1), 0)] = 128
 
-    show(gray)
+
+    for i in range(SIZE):
+        for j in range(SIZE):
+            x,y = grid[i][j]
+            color = 'a' if (i, j) == blackind else getcolor(gridcolors[i][j])
+            realColor = color2rgb(color)
+            cv2.drawMarker(im, (x,y), (0,0,0), markerSize=5, thickness=9, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
+            cv2.drawMarker(im, (x,y), realColor, markerSize=5, thickness=7, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
+
     return mat
+
+
+def color2rgb(c):
+    if c == "b":
+        return (255, 0, 0)
+    if c == "r":
+        return (0, 0, 255)
+    if c == "c":
+        return (128, 128, 128)
+    if c == "a":
+        return (255, 255, 0)
+    return (255, 255, 255)
 
 
 def colorize(c):
