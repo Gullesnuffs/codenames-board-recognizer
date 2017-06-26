@@ -346,9 +346,12 @@ def find_grid(fname):
                     sumg += g
                     sumr += r
                     sum1 += 1
-            sumb /= sum1
-            sumg /= sum1
-            sumr /= sum1
+
+            if sum1 > 0:
+                sumb /= sum1
+                sumg /= sum1
+                sumr /= sum1
+
             print(X, Y, sumb, sumg, sumr, rad)
             gridcolors[i][j] = (sumb, sumg, sumr)
             if sumb + sumg + sumr < minsum:
