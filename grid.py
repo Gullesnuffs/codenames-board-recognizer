@@ -227,14 +227,12 @@ def fit_grid(points):
 
 def getcolor(col):
     b, g, r = col
-    if r > g*2 and r > b*2 and r > 70:
+    if r > g*1.5 and r > b*1.5:
         return "r"
-    elif b > r*2 and b > g*0.8 and b > 60:
+    elif b > r*1.1 and b > g*0.8:
         return "b"
-    elif r > 40 and g > 40 and b > 40:
-        return "c"
     else:
-        return "a"
+        return "c"
 
 
 def fancy_thresholding(im):
@@ -323,6 +321,8 @@ def find_grid(fname):
     grid = fit_grid(points)
 
     gridcolors = [[None] * SIZE for _ in range(SIZE)]
+    minsum = INF
+    blackind = None
     for i in range(SIZE):
         for j in range(SIZE):
             p = grid[i][j]
@@ -351,12 +351,16 @@ def find_grid(fname):
             sumr /= sum1
             print(X, Y, sumb, sumg, sumr, rad)
             gridcolors[i][j] = (sumb, sumg, sumr)
+            if sumb + sumg + sumr < minsum:
+                minsum = sumb + sumg + sumr
+                blackind = (i, j)
 
     mat = []
     for i in range(SIZE):
         mrow = ''
         for j in range(SIZE):
-            mrow += getcolor(gridcolors[i][j])
+            col = 'a' if (i, j) == blackind else getcolor(gridcolors[i][j])
+            mrow += col
         mat.append(mrow)
 
     for row in grid:
