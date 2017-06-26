@@ -79,28 +79,36 @@ def fit_grid2(points, topleft, topright, botleft, botright):
 
     match_dis2 = 20**2
     minr, maxr = -SIZE+2, SIZE
-    scores = [[0] * (maxr - minr) for _ in range(maxr - minr)]
+    scores = [[(0, -1)] * (maxr - minr) for _ in range(maxr - minr)]
     for i in range(minr, maxr):
         for j in range(minr, maxr):
             p = gridp(i, j)
             best_dis2 = INF
+            bestk = -1
             for k in range(len(points)):
                 q = complex(points[k][0], points[k][1])
                 dis = p - q
-                best_dis2 = min(best_dis2, dis.real**2 + dis.imag**2)
+                dis2 = dis.real**2 + dis.imag**2
+                if dis2 < best_dis2:
+                    best_dis2 = dis2
+                    bestk = k
             score = max(1 - best_dis2 / match_dis2, 0)
             # rat = best_dis2 / match_dis2
             # score = 1 - rat if rat < 0.5 else math.exp(-rat) * 0.82436
             # score = 1 if best_dis2 < match_dis2 else 0
-            scores[i - minr][j - minr] = score
+            scores[i - minr][j - minr] = (score, bestk)
 
     bestsc = (-1, 0, 0)
     for i in range(minr, 1):
         for j in range(minr, 1):
             sc = 0
+            used = [0] * len(points)
             for ik in range(SIZE):
                 for jk in range(SIZE):
-                    sc += scores[i + ik - minr][j + jk - minr]
+                    s = scores[i + ik - minr][j + jk - minr]
+                    used[s[1]] += 1
+                    u = used[s[1]]
+                    sc += s[0] / u
             bestsc = max(bestsc, (sc, i, j))
 
     score = bestsc[0]
