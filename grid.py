@@ -1,7 +1,6 @@
 from __future__ import print_function
 import cv2
 import sys
-import math
 import numpy as np
 from termcolor import colored
 
@@ -19,6 +18,11 @@ def show(im):
 def circ_dilation(rad):
     return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rad + 1, 2 * rad + 1), (rad, rad))
 
+
+def dist(p, q):
+    dx = p[0] - q[0]
+    dy = p[1] - q[1]
+    return (dx*dx + dy*dy) ** 0.5
 
 def dfs_segmentation(im, minimumArea, maximumArea):
     # Do DFS from each black pixel to find regions of black pixels
@@ -285,6 +289,7 @@ def find_grid(fname):
     im = resize(im, 1024)
     gray = fancy_thresholding(im)
     gray = resize(gray, 512)
+    im = resize(im, 512)
 
     # show(gray)
     # contIm, contours, hierarchy = cv2.findContours(gray, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
@@ -299,14 +304,41 @@ def find_grid(fname):
 
     grid = fit_grid(points)
 
+    gridcolors = [[None] * SIZE for _ in range(SIZE)]
+    for i in range(SIZE):
+        for j in range(SIZE):
+            p = grid[i][j]
+            dists = []
+            if i > 0:
+                dists.append(dist(grid[i-1][j], p))
+            if j > 0:
+                dists.append(dist(grid[i][j-1], p))
+            if i < SIZE-1:
+                dists.append(dist(grid[i+1][j], p))
+            if j < SIZE-1:
+                dists.append(dist(grid[i][j+1], p))
+            rad = int(sum(dists) / len(dists) / 3)
+            sumb = sumg = sumr = sum1 = 0
+            X,Y = p
+            for y in range(max(Y-rad,0),min(Y+rad+1,height)):
+                for x in range(max(X-rad,0),min(X+rad+1,width)):
+                    # ignore if gray[y][x] == 0?
+                    b,g,r = im[y][x]
+                    sumb += b
+                    sumg += g
+                    sumr += r
+                    sum1 += 1
+            sumb /= sum1
+            sumg /= sum1
+            sumr /= sum1
+            print(X, Y, sumb, sumg, sumr, rad)
+            gridcolors[i][j] = (sumb, sumg, sumr)
+
     mat = []
-    for row in grid:
+    for i in range(SIZE):
         mrow = ''
-        for co in row:
-            x, y = co
-            x = max(min(x, width-1), 0)
-            y = max(min(y, height-1), 0)
-            mrow += getcolor(im[y][x])
+        for j in range(SIZE):
+            mrow += getcolor(gridcolors[i][j])
         mat.append(mrow)
 
     for row in grid:
