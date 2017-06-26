@@ -13,10 +13,8 @@ def show(im):
     Image.fromarray(im).show()
 
 
-def circ_dilation(dilation):
-    return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                                     (2 * dilation + 1, 2 * dilation + 1),
-                                     (dilation, dilation))
+def circ_dilation(rad):
+    return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rad + 1, 2 * rad + 1), (rad, rad))
 
 
 def dfs_segmentation(im, minimumArea, maximumArea):
@@ -154,27 +152,26 @@ def fit_grid(points):
         bj = bestsc[2]
         if score > bestscore:
             bestscore = score
-            bestgrid = [[top(gridp(bi + i, bj + j)) for i in range(SIZE)] for j in range(SIZE)]
+            bestgrid = [[top(gridp(bi + i, bj + j)) for j in range(SIZE)] for i in range(SIZE)]
 
     if bestscore <= SIZE*SIZE//2:
         return None
     return bestgrid
 
 
-"""
-def getcolor(r, g, b):
-  if r > g*2 and r > b*2 and r > 70:
-    return "r"
-  elif b > r*2 and b > g*0.8 and b > 60:
-    return "b"
-  elif r > 40 and g > 40 and b > 40:
-    return "c"
-  else:
-    return "a"
-"""
+def getcolor(col):
+    b, g, r = col
+    if r > g*2 and r > b*2 and r > 70:
+        return "r"
+    elif b > r*2 and b > g*0.8 and b > 60:
+        return "b"
+    elif r > 40 and g > 40 and b > 40:
+        return "c"
+    else:
+        return "a"
 
 
-def find_words(fname):
+def find_grid(fname):
     im = cv2.imread(fname)
 
     desiredSize = 512
@@ -204,6 +201,14 @@ def find_words(fname):
 
     print(grid)
 
+    mat = []
+    for row in grid:
+        mrow = ''
+        for co in row:
+            x, y = co
+            mrow += getcolor(im[y][x])
+        mat.append(mrow)
+
     height, width = gray.shape
     for row in grid:
         for co in row:
@@ -214,27 +219,22 @@ def find_words(fname):
                 for j in range(11):
                     gray[max(min(y+i, height-1), 0)][max(min(x+j, width-1), 0)] = 128
 
-    show(gray)
-    exit()
+    # show(gray)
+    return mat
+
+
+def colorize(c):
+    if c == "b": return colored('■ ', 'blue')
+    if c == "r": return colored('■ ', 'red')
+    if c == "c": return colored('■ ', 'grey')
+    if c == "a": return colored('■ ', 'cyan')
+    return "u "
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("usage: python3 secret.py image")
+        print("usage: python3 grid.py image")
         exit(1)
-    foundWords, grid = find_words(sys.argv[1])
-    print("Found " + str(len(foundWords)) + " candidates!")
-    for i in range(5):
-        line = ""
-        for j in range(5):
-            if grid[i][j] == "b":
-                line += colored('■ ', 'blue')
-            elif grid[i][j] == "r":
-                line += colored('■ ', 'red')
-            elif grid[i][j] == "c":
-                line += colored('■ ', 'grey')
-            elif grid[i][j] == "a":
-                line += colored('■ ', 'magenta')
-            else:
-                line += "u "
-        print(line)
+    grid = find_grid(sys.argv[1])
+    for row in grid:
+        print(''.join(colorize(c) for c in row))
