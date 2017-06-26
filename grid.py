@@ -24,6 +24,7 @@ def dist(p, q):
     dy = p[1] - q[1]
     return (dx*dx + dy*dy) ** 0.5
 
+
 def dfs_segmentation(im, minimumArea, maximumArea):
     # Do DFS from each black pixel to find regions of black pixels
     height, width = im.shape
@@ -131,7 +132,7 @@ def fit_grid(points):
     bestscore = -1
     bestgrid = None
     bestcorners = None
-    min_dist = 20
+    min_dist = 10
     for pt in points:
         # Find a reasonable subsquare (pt, bestr, bestd, bestrd)
         # r = right, d = down
@@ -306,7 +307,7 @@ def find_grid(fname):
 
     height, width = gray.shape
 
-    areas = list(dfs_segmentation(gray, 80, 512**2 // 20))
+    areas = list(dfs_segmentation(gray, 50, 512**2 // 20))
     points = [((ar[1] + ar[3]) / 2, (ar[0] + ar[2]) / 2) for ar in areas]
     print(len(points))
 
