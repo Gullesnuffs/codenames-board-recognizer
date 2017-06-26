@@ -16,4 +16,9 @@ for file in sys.argv[2:]:
     cnt += 1
 
 call("gm montage -geometry 300x -tile 5x res*.png out.png", shell=True)
-call(["open", "out.png"])
+if sys.platform.startswith('linux'):
+    call(["xdg-open", "out.png"])
+elif sys.platform == 'darwin':
+    call(["open", "out.png"])
+else:
+    os.startfile("out.png")
