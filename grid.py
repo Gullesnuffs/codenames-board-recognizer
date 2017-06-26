@@ -124,6 +124,9 @@ def fit_grid2(points, topleft, topright, botleft, botright):
     return (score, grid)
 
 
+def pt2complex(v):
+    return complex(v[0], v[1])
+
 def fit_grid(points):
     bestscore = -1
     bestgrid = None
@@ -131,6 +134,9 @@ def fit_grid(points):
     min_dist = 20
     for pt in points:
         # Find a reasonable subsquare (pt, bestr, bestd, bestrd)
+        # r = right, d = down
+        # This will find the best point to the right of this one
+        # and the best point below this point
         bestrx = bestdy = INF
         bestr = bestd = None
         for pt2 in points:
@@ -142,8 +148,12 @@ def fit_grid(points):
             if min_dist < dy < bestdy and abs(dx) < dy * 0.6:
                 bestdy = dy
                 bestd = pt2
+
+        # Make sure we have found both points
         if not bestr or not bestd:
             continue
+
+        # Find two points, to the right of the point below this point, and below the point to the right of this one
         bestrx = bestdy = INF
         bestdr = bestrd = None
         for pt2 in points:
@@ -157,14 +167,16 @@ def fit_grid(points):
             if min_dist < dy < bestdy and abs(dx) < dy * 0.6:
                 bestdy = dy
                 bestrd = pt2
+
+        # Make sure the points were the same and thus constitutes a polygon with 4-corners
         if bestdr != bestrd or not bestrd:
             continue
 
         # Try basing our grid on those four points, and see what fits
-        topleft = complex(pt[0], pt[1])
-        topright = complex(bestr[0], bestr[1])
-        botleft = complex(bestd[0], bestd[1])
-        botright = complex(bestrd[0], bestrd[1])
+        topleft = pt2complex(pt)
+        topright = pt2complex(bestr)
+        botleft = pt2complex(bestd)
+        botright = pt2complex(bestrd)
         score, grid = fit_grid2(points, topleft, topright, botleft, botright)
         if score > bestscore:
             bestscore = score
@@ -176,19 +188,25 @@ def fit_grid(points):
 
     # Hill climb a bit to improve the solution
     for delta in [2., 1., .5, .25]:
+        # Try to offset all corners by -1, 0 or 1 times the current delta
         DIRY = [complex(delta * i, 0) for i in range(-1, 2)]
         DIRX = [complex(0, delta * i) for i in range(-1, 2)]
+
+        # Offset all points along the Y axis
         for dira in DIRY:
             for dirb in DIRY:
                 for dirc in DIRY:
                     for dird in DIRY:
                         c = bestcorners
                         ca, cb, cc, cd = c[0] + dira, c[1] + dirb, c[2] + dirc, c[3] + dird
+                        # Check if offsetting the corners like this produces a better fit
                         score, grid = fit_grid2(points, ca, cb, cc, cd)
                         if score > bestscore:
                             bestscore = score
                             bestgrid = grid
                             bestcorners = (ca, cb, cc, cd)
+
+        # Offset all points along the X axis
         for dira in DIRX:
             for dirb in DIRX:
                 for dirc in DIRX:
