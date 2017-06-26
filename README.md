@@ -1,11 +1,11 @@
 # codenames-board-recognizer
 
 ## Dependencies
-python3, tesseract, pillow, tesserocr, cffi, opencv
+python3 (3.6.1 working), tesseract (3.05.01 working), pillow (4.1.1 working), tesserocr (2.2.1 working), cffi, opencv (3.x)
 
 On macOS:
 ~~~
-brew install tesseract
+brew install opencv tesseract
 pip3 install pillow tesserocr cffi
 ./build-ffi.sh
 ~~~
