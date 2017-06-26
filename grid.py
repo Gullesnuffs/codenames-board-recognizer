@@ -313,6 +313,9 @@ def find_grid(fname):
 
     grid = fit_grid(points)
 
+    if grid is None:
+        return None
+
     gridcolors = [[None] * SIZE for _ in range(SIZE)]
     minsum = INF
     blackind = None
@@ -405,5 +408,8 @@ if __name__ == "__main__":
         print("usage: python3 grid.py image")
         exit(1)
     grid = find_grid(sys.argv[1])
-    for row in grid:
-        print(''.join(colorize(c) for c in row))
+    if grid is None:
+        print("<no grid>")
+    else:
+        for row in grid:
+            print(''.join(colorize(c) for c in row))
