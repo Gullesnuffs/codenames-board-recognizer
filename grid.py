@@ -211,6 +211,8 @@ def getcolor(col):
 
 def find_grid(fname):
     im = cv2.imread(fname)
+    if im is None:
+        raise Exception("Could not read file: " + fname)
 
     desiredSize = 512
     scale = desiredSize / max(im.shape[0], im.shape[1])
@@ -231,6 +233,8 @@ def find_grid(fname):
 
     # show(contIm)
 
+    height, width = gray.shape
+
     areas = list(dfs_segmentation(gray, 80, 512**2 // 20))
     points = [((ar[1] + ar[3]) / 2, (ar[0] + ar[2]) / 2) for ar in areas]
     print(len(points))
@@ -242,10 +246,11 @@ def find_grid(fname):
         mrow = ''
         for co in row:
             x, y = co
+            x = max(min(x, width-1), 0)
+            y = max(min(y, height-1), 0)
             mrow += getcolor(im[y][x])
         mat.append(mrow)
 
-    height, width = gray.shape
     for row in grid:
         for co in row:
             x, y = co
