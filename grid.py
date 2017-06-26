@@ -167,7 +167,7 @@ def fit_grid(points):
             bestgrid = grid
             bestcorners = (topleft, topright, botleft, botright)
 
-    if not bestgrid: # or bestscore <= SIZE*SIZE//2:
+    if not bestgrid:
         return None
 
     # Hill climb a bit to improve the solution
@@ -198,10 +198,7 @@ def fit_grid(points):
                             bestcorners = (ca, cb, cc, cd)
 
 
-    # c = bestcorners
-    # ca, cb, cc, cd = c[0], c[1], c[2] + complex(-1.0, 0.), c[3] + complex(-2.7, -0.0)
-    # bestscore, bestgrid = fit_grid2(points, ca, cb, cc, cd)
-
+    # if bestscore <= SIZE*SIZE//2: return None
     print(bestscore)
     return bestgrid
 
