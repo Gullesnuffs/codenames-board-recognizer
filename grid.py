@@ -239,22 +239,18 @@ def fancy_thresholding(im):
     r, g, b = cv2.split(im)
     c = np.maximum(r, np.maximum(g, b))
     cv2.imwrite('t1.png', c)
+
     # c = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
     c = cv2.GaussianBlur(c, (0, 0), 2)
     cv2.imwrite('t2.png', c)
+
     mid = cv2.GaussianBlur(c, (0, 0), 8)
     c = (3 * (c.astype(np.float32) - mid.astype(np.float32)) + 128).clip(0, 255).astype(np.uint8)
     _, c = cv2.threshold(c, 128, 255, cv2.THRESH_BINARY)
     cv2.imwrite('t3.png', c)
 
-    dilation = 1
-    element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                                      (2 * dilation + 1, 2 * dilation + 1),
-                                      (dilation, dilation))
-    c = cv2.erode(c, element)
+    c = cv2.erode(c, circ_dilation(1))
     cv2.imwrite('t4.png', c)
-
-    # des = cv2.bitwise_not(gray)
 
     # Fill in small contours
     _, contour, _ = cv2.findContours(c, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -263,14 +259,10 @@ def fancy_thresholding(im):
             cv2.drawContours(c, [cnt], 0, 255, -1)
 
     cv2.imwrite('t5.png', c)
-    dilation = 1
-    element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                                      (2 * dilation + 1, 2 * dilation + 1),
-                                      (dilation, dilation))
-    c = cv2.erode(c, element)
+
+    c = cv2.erode(c, circ_dilation(1))
     cv2.imwrite('t6.png', c)
 
-    # gray = cv2.resize(gray, (newSize[0]//2, newSize[1]//2))
     c = 255 - c
     return c
 
