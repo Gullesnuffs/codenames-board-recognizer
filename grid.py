@@ -214,6 +214,8 @@ def find_grid(fname):
     for i in range(SIZE):
         for j in range(SIZE):
             x,y = grid[i][j]
+            x = int(x)
+            y = int(y)
             color = 'a' if (i, j) == blackind else getcolor(gridcolors[i][j])
             realColor = color2rgb(color)
             cv2.drawMarker(im, (x,y), (0,0,0), markerSize=5, thickness=9, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
