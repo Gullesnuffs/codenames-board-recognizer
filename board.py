@@ -234,12 +234,8 @@ def draw_match_grid(words, rect, im):
     show(im)
 
 
-def find_words(imagePath, removeFile=False):
-    try:
-        im = cv2.imread(imagePath)
-    finally:
-        if removeFile:
-            os.remove(imagePath)
+def find_words(imagePath):
+    im = cv2.imread(imagePath)
 
     desiredWidth = 2048
     scale = desiredWidth / max(im.shape[0], im.shape[1])
