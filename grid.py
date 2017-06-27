@@ -7,6 +7,7 @@ else:
     from ._grid import ffi, lib
 import numpy as np
 from termcolor import colored
+import math
 
 
 SIZE = 5
@@ -68,17 +69,6 @@ def fit_grid(points):
             res[i][j] = (p.x, p.y)
     return res
 
-
-def getcolor(col):
-    b, g, r = col
-    if r > g*1.5 and r > b*1.5:
-        return "r"
-    elif b > r*1.1 and b > g*0.8:
-        return "b"
-    else:
-        return "c"
-
-
 def fancy_thresholding(im, debug=False):
     r, g, b = cv2.split(im)
     c = np.maximum(r, np.maximum(g, b))
@@ -118,10 +108,40 @@ def fancy_thresholding(im, debug=False):
 
 
 def resize(im, desiredWidth):
-  scale = desiredWidth / max(im.shape[0], im.shape[1])
-  newSize = (round(im.shape[1] * scale), round(im.shape[0] * scale))
-  im = cv2.resize(im, newSize)
-  return im
+    scale = desiredWidth / max(im.shape[0], im.shape[1])
+    newSize = (round(im.shape[1] * scale), round(im.shape[0] * scale))
+    im = cv2.resize(im, newSize)
+    return im
+
+
+def bgr2rgb(color):
+    return (color[2], color[1], color[0])
+
+
+def create_color_classifier(bgr_colors):
+    assasin = min(bgr_colors, key=lambda v: sum(v))
+    flat = bgr_colors[:]
+    flat.remove(assasin)
+
+    means = np.mean(flat, axis=0)
+    stds = np.std(flat, axis=0)
+
+    def classify(col):
+        if np.sum(np.abs(np.array(assasin) - col)) < 0.01:
+            return "a"
+
+        col -= means
+        col /= stds
+        _, g, r = col
+        angle = math.atan2(g, r)
+        if abs(angle) > 0.65 * math.pi:
+            return "b"
+        elif angle < 0:
+            return "r"
+        else:
+            return "c"
+
+    return classify
 
 
 def find_grid(fname, debug=False):
@@ -173,6 +193,8 @@ def find_grid(fname, debug=False):
             rad = int(sum(dists) / len(dists) / 3)
             X = int(p[0])
             Y = int(p[1])
+
+            # Extract a small region around the tile
             patch = im[max(Y-rad, 0):min(Y+rad+1, height),max(X-rad,0):min(X+rad+1,width)]
 
             # If the cell is outside the picture, detection must have gone wrong.
@@ -189,11 +211,13 @@ def find_grid(fname, debug=False):
                 minsum = meanb + meang + meanr
                 blackind = (i, j)
 
+    color_classifier = create_color_classifier([x for sub in gridcolors for x in sub])
+
     mat = []
     for i in range(SIZE):
         mrow = ''
         for j in range(SIZE):
-            col = 'a' if (i, j) == blackind else getcolor(gridcolors[i][j])
+            col = color_classifier(gridcolors[i][j])
             mrow += col
         mat.append(mrow)
 
@@ -211,8 +235,10 @@ def find_grid(fname, debug=False):
                 x,y = grid[i][j]
                 x = int(x)
                 y = int(y)
-                color = 'a' if (i, j) == blackind else getcolor(gridcolors[i][j])
+                color = color_classifier(gridcolors[i][j])
+                # realColor = gridcolors[i][j]
                 realColor = color2rgb(color)
+                realColor = bgr2rgb(realColor)
                 cv2.drawMarker(im, (x,y), (0,0,0), markerSize=5, thickness=9, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
                 cv2.drawMarker(im, (x,y), realColor, markerSize=5, thickness=7, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
 
@@ -221,13 +247,13 @@ def find_grid(fname, debug=False):
 
 def color2rgb(c):
     if c == "b":
-        return (255, 0, 0)
-    if c == "r":
         return (0, 0, 255)
+    if c == "r":
+        return (255, 0, 0)
     if c == "c":
         return (128, 128, 128)
     if c == "a":
-        return (255, 255, 0)
+        return (0, 255, 255)
     return (255, 255, 255)
 
 
