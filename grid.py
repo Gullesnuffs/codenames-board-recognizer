@@ -1,7 +1,10 @@
 from __future__ import print_function
 import cv2
 import sys
-from _grid import ffi, lib
+if __name__ == '__main__':
+    from _grid import ffi, lib
+else:
+    from ._grid import ffi, lib
 import numpy as np
 from termcolor import colored
 
