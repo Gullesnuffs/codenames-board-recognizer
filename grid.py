@@ -72,22 +72,26 @@ def getcolor(col):
         return "c"
 
 
-def fancy_thresholding(im):
+def fancy_thresholding(im, debug=False):
     r, g, b = cv2.split(im)
     c = np.maximum(r, np.maximum(g, b))
-    cv2.imwrite('t1.png', c)
+    if debug:
+        cv2.imwrite('t1.png', c)
 
     # c = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
     c = cv2.GaussianBlur(c, (0, 0), 2)
-    cv2.imwrite('t2.png', c)
+    if debug:
+        cv2.imwrite('t2.png', c)
 
     mid = cv2.GaussianBlur(c, (0, 0), 8)
     c = (3 * (c.astype(np.float32) - mid.astype(np.float32)) + 128).clip(0, 255).astype(np.uint8)
     _, c = cv2.threshold(c, 128, 255, cv2.THRESH_BINARY)
-    cv2.imwrite('t3.png', c)
+    if debug:
+        cv2.imwrite('t3.png', c)
 
     c = cv2.erode(c, circ_dilation(1))
-    cv2.imwrite('t4.png', c)
+    if debug:
+        cv2.imwrite('t4.png', c)
 
     # Fill in small contours
     _, contour, _ = cv2.findContours(c, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -95,25 +99,15 @@ def fancy_thresholding(im):
         if cv2.contourArea(cnt) < 20000:
             cv2.drawContours(c, [cnt], 0, 255, -1)
 
-    cv2.imwrite('t5.png', c)
+    if debug:
+        cv2.imwrite('t5.png', c)
 
     c = cv2.erode(c, circ_dilation(1))
-    cv2.imwrite('t6.png', c)
+    if debug:
+        cv2.imwrite('t6.png', c)
 
     c = 255 - c
     return c
-
-
-def some_other_thresholding(im):
-    im = cv2.GaussianBlur(im, (3, 3), 0)
-
-    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-
-    gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 41, 10)
-
-    gray = cv2.erode(gray, circ_dilation(1))
-    gray = cv2.dilate(gray, circ_dilation(1))
-    return gray
 
 
 def resize(im, desiredWidth):
@@ -123,7 +117,7 @@ def resize(im, desiredWidth):
   return im
 
 
-def find_grid(fname):
+def find_grid(fname, debug=False):
     im = cv2.imread(fname)
     if im is None:
         raise Exception("Could not read file: " + fname)
@@ -132,7 +126,7 @@ def find_grid(fname):
     # gray = some_other_thresholding(im)
 
     im = resize(im, 1024)
-    gray = fancy_thresholding(im)
+    gray = fancy_thresholding(im, debug)
     gray = resize(gray, 512)
     im = resize(im, 512)
 
@@ -146,7 +140,8 @@ def find_grid(fname):
     areas = dfs_segmentation(gray, 50, 512**2 // 20)
 
     points = [((ar[1] + ar[3]) / 2, (ar[0] + ar[2]) / 2) for ar in areas]
-    print(len(points))
+    if debug:
+        print(len(points))
 
     grid = fit_grid(points)
 
@@ -189,7 +184,8 @@ def find_grid(fname):
             sumg /= sum1
             sumr /= sum1
 
-            print(X, Y, sumb, sumg, sumr, rad)
+            if debug:
+                print(X, Y, sumb, sumg, sumr, rad)
             gridcolors[i][j] = (sumb, sumg, sumr)
             if sumb + sumg + sumr < minsum:
                 minsum = sumb + sumg + sumr
@@ -203,23 +199,24 @@ def find_grid(fname):
             mrow += col
         mat.append(mrow)
 
-    for row in grid:
-        for co in row:
-            x = int(co[0]) - 5
-            y = int(co[1]) - 5
-            for i in range(11):
-                for j in range(11):
-                    gray[max(min(y+i, height-1), 0)][max(min(x+j, width-1), 0)] = 128
+    if debug:
+        for row in grid:
+            for co in row:
+                x = int(co[0]) - 5
+                y = int(co[1]) - 5
+                for i in range(11):
+                    for j in range(11):
+                        gray[max(min(y+i, height-1), 0)][max(min(x+j, width-1), 0)] = 128
 
-    for i in range(SIZE):
-        for j in range(SIZE):
-            x,y = grid[i][j]
-            x = int(x)
-            y = int(y)
-            color = 'a' if (i, j) == blackind else getcolor(gridcolors[i][j])
-            realColor = color2rgb(color)
-            cv2.drawMarker(im, (x,y), (0,0,0), markerSize=5, thickness=9, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
-            cv2.drawMarker(im, (x,y), realColor, markerSize=5, thickness=7, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
+        for i in range(SIZE):
+            for j in range(SIZE):
+                x,y = grid[i][j]
+                x = int(x)
+                y = int(y)
+                color = 'a' if (i, j) == blackind else getcolor(gridcolors[i][j])
+                realColor = color2rgb(color)
+                cv2.drawMarker(im, (x,y), (0,0,0), markerSize=5, thickness=9, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
+                cv2.drawMarker(im, (x,y), realColor, markerSize=5, thickness=7, markerType=cv2.MARKER_DIAMOND, line_type=cv2.LINE_AA)
 
     return mat
 
@@ -248,7 +245,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("usage: python3 grid.py image")
         exit(1)
-    grid = find_grid(sys.argv[1])
+    grid = find_grid(sys.argv[1], debug=True)
     if grid is None:
         print("<no grid>")
     else:
