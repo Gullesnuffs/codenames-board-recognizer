@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <iostream>
 #include <tuple>
+#include <array>
+#include <cmath>
 #include "grid.h"
 using namespace std;
 
