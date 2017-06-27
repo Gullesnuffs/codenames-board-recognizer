@@ -15,7 +15,11 @@ INF = 10**9
 
 def show(im):
     from PIL import Image
-    # cv2.imshow('image', im)
+    print(im.shape)
+    # Fix BGR -> RGB
+    if im.shape[-1] == 3:
+        b, g, r = cv2.split(im)
+        im = cv2.merge([r, g, b])
     Image.fromarray(im).show()
 
 
