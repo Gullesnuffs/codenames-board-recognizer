@@ -167,31 +167,22 @@ def find_grid(fname, debug=False):
             if j < SIZE-1:
                 dists.append(dist(grid[i][j+1], p))
             rad = int(sum(dists) / len(dists) / 3)
-            sumb = sumg = sumr = sum1 = 0
             X = int(p[0])
             Y = int(p[1])
-            for y in range(max(Y-rad,0),min(Y+rad+1,height)):
-                for x in range(max(X-rad,0),min(X+rad+1,width)):
-                    # ignore if gray[y][x] == 0?
-                    b,g,r = im[y][x]
-                    sumb += b
-                    sumg += g
-                    sumr += r
-                    sum1 += 1
+            patch = im[max(Y-rad, 0):min(Y+rad+1, height),max(X-rad,0):min(X+rad+1,width)]
 
             # If the cell is outside the picture, detection must have gone wrong.
-            if sum1 == 0:
+            if patch.size == 0:
                 return None
 
-            sumb /= sum1
-            sumg /= sum1
-            sumr /= sum1
+            # Take the mean of the RGB values in the image patch
+            meanb, meang, meanr = np.mean(patch, axis=(0,1))
 
             if debug:
-                print(X, Y, sumb, sumg, sumr, rad)
-            gridcolors[i][j] = (sumb, sumg, sumr)
-            if sumb + sumg + sumr < minsum:
-                minsum = sumb + sumg + sumr
+                print(X, Y, meanb, meang, meanr, rad)
+            gridcolors[i][j] = (meanb, meang, meanr)
+            if meanb + meang + meanr < minsum:
+                minsum = meanb + meang + meanr
                 blackind = (i, j)
 
     mat = []
