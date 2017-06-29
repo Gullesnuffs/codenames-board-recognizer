@@ -20,5 +20,6 @@ pip3 install pillow tesserocr cffi termcolor
 
 ## Usage
 ~~~
-python3 boardRecognizer.py examples/board/example1.jpg
+python3 board.py examples/board/example1.jpg
+python3 grid.py examples/secret/example1.jpg
 ~~~
