@@ -10,7 +10,6 @@ import scipy.optimize
 
 
 module_path = os.path.dirname(__file__) or '.'
-word_list = [line.strip() for line in open(module_path + '/wordlist.txt')]
 
 
 def show(im):
@@ -153,7 +152,7 @@ def find_contours(im, dilation, min_contour_area, max_contour_area):
     return contours
 
 
-def find_text_in_contours(contours, image):
+def find_text_in_contours(contours, image, language):
     def align_rect_horizontal(rect):
         if rect[2] < -45:
             rect = (rect[0], (rect[1][1], rect[1][0]), rect[2] + 90)
@@ -174,9 +173,11 @@ def find_text_in_contours(contours, image):
         warp = cv2.warpPerspective(image, transform, (width, height))
         return warp
 
-    noSpaces2words = dict((w.upper().replace(" ", ""), w) for w in word_list)
+    wordlist = [line.strip() for line in open(module_path + '/wordlist-' + language + '.txt')]
+
+    noSpaces2words = dict((w.upper().replace(" ", ""), w) for w in wordlist)
     results = []
-    with tesserocr.PyTessBaseAPI() as tess:
+    with tesserocr.PyTessBaseAPI(lang=language) as tess:
         for c in contours:
             # Find the smallest bounding rectangle that encloses the word contour
             rect = align_rect_horizontal(cv2.minAreaRect(c))
@@ -205,7 +206,7 @@ def find_text_in_contours(contours, image):
             if result in noSpaces2words:
                 result = noSpaces2words[result]
 
-            if not result in word_list:
+            if not result in wordlist:
                 continue
 
             results.append(Card(result, rect))
@@ -234,7 +235,8 @@ def draw_match_grid(words, rect, im):
     show(im)
 
 
-def find_words(imagePath):
+def find_words(imagePath, language='eng'):
+    assert language in ['eng', 'swe']
     im = cv2.imread(imagePath)
 
     desiredWidth = 2048
@@ -269,7 +271,7 @@ def find_words(imagePath):
     # cv2.drawContours(im3, contours, -1, (255, 255, 255), 2)
     # show(im3)
 
-    foundWords = find_text_in_contours(contours, blur2)
+    foundWords = find_text_in_contours(contours, blur2, language)
     uniqueWords = unique(foundWords)
 
     bounding_rect = calculate_optimized_bounding_rect(uniqueWords, im)

@@ -18,6 +18,8 @@ pip3 install pillow tesserocr cffi termcolor
 ./build-ffi.sh
 ~~~
 
+For Swedish support, install e.g. tesseract-ocr-swe as well (otherwise `find_words` will throw when 'swe' is passed).
+
 ## Usage
 ~~~
 python3 board.py examples/board/example1.jpg
